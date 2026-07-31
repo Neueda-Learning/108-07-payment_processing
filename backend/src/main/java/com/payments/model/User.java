@@ -1,14 +1,24 @@
 package com.payments.model;
 
-// TODO: Implement User JPA entity
-//
-// Table: users
-//
-// Fields:
-//   id        BIGSERIAL    PRIMARY KEY, auto-generated
-//   username  VARCHAR(50)  NOT NULL, UNIQUE
-//   password  VARCHAR(255) NOT NULL  (BCrypt hash — never store plain text)
-//   createdAt TIMESTAMP    NOT NULL, auto-set on persist
-//
-// Use @PrePersist to set createdAt
-// Implement UserDetails (or keep it as a plain entity and map in UserDetailsServiceImpl)
+import jakarta.persistence.*;
+import lombok.Getter;
+import lombok.Setter;
+import lombok.NoArgsConstructor;
+
+@Entity
+@Table(name = "users")
+@Getter
+@Setter
+@NoArgsConstructor
+public class User {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @Column(nullable = false, unique = true, length = 50)
+    private String username;
+
+    @Column(nullable = false, length = 255)
+    private String password;
+}

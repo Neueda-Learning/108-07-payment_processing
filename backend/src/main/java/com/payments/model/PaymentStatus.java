@@ -1,9 +1,21 @@
 package com.payments.model;
 
-// TODO: Implement PaymentStatus enum
-//
-// Values: CREATED, VALIDATED, SENT, COMPLETED, FAILED
-//
-// Optional utility method:
-//   nextStatus() — returns the next status in the happy-path flow,
-//                  or throws InvalidStatusTransitionException if there is none
+import com.payments.exception.InvalidStatusTransitionException;
+
+public enum PaymentStatus {
+    CREATED,
+    VALIDATED,
+    SENT,
+    COMPLETED,
+    FAILED;
+
+    public PaymentStatus nextStatus() {
+        return switch (this) {
+            case CREATED   -> VALIDATED;
+            case VALIDATED -> SENT;
+            case SENT      -> COMPLETED;
+            case COMPLETED -> throw new InvalidStatusTransitionException(this, null);
+            case FAILED    -> throw new InvalidStatusTransitionException(this, null);
+        };
+    }
+}
