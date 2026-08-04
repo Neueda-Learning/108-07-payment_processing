@@ -60,7 +60,7 @@ export default function Signup() {
       navigate('/login', { state: { registered: true }, replace: true });
     } catch (err) {
       setServerError(
-        err.code === 'USERNAME_TAKEN'
+        err.code === 'USERNAME_ALREADY_EXISTS'
           ? 'Username already taken. Please choose a different one.'
           : err.message || 'Registration failed. Please try again.'
       );

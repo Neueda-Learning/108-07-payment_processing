@@ -5,53 +5,26 @@ import { localCreatePayment } from '../services/localPayments';
 const CURRENCIES = ['USD', 'EUR', 'INR'];
 
 const INITIAL_FORM = {
-  sourceAccount: '',
-  destinationAccount: '',
   amount: '',
   currency: 'USD',
-  reference: '',
-  idempotencyKey: '',
 };
-
-function generateIdempotencyKey() {
-  return `idem-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
-}
 
 export default function CreatePayment() {
   const navigate = useNavigate();
-  const [form, setForm] = useState({
-    ...INITIAL_FORM,
-    idempotencyKey: generateIdempotencyKey(),
-  });
+  const [form, setForm] = useState({ ...INITIAL_FORM });
   const [fieldErrors, setFieldErrors] = useState({});
   const [serverError, setServerError] = useState('');
-  const [loading] = useState(false);
+  const [loading, setLoading] = useState(false);
 
   function handleChange(e) {
     const { name, value } = e.target;
-    const sanitizedValue =
-      name === 'sourceAccount' || name === 'destinationAccount'
-        ? value.replace(/\D/g, '').slice(0, 12)
-        : value;
-    setForm((prev) => ({ ...prev, [name]: sanitizedValue }));
+    setForm((prev) => ({ ...prev, [name]: value }));
     setFieldErrors((prev) => ({ ...prev, [name]: '' }));
     setServerError('');
   }
 
   function validate() {
     const errors = {};
-
-    if (!form.sourceAccount.trim())
-      errors.sourceAccount = 'Source account is required.';
-    else if (!/^\d{12}$/.test(form.sourceAccount.trim()))
-      errors.sourceAccount = 'Source account must be exactly 12 digits.';
-
-    if (!form.destinationAccount.trim())
-      errors.destinationAccount = 'Destination account is required.';
-    else if (!/^\d{12}$/.test(form.destinationAccount.trim()))
-      errors.destinationAccount = 'Destination account must be exactly 12 digits.';
-    else if (form.destinationAccount.trim() === form.sourceAccount.trim())
-      errors.destinationAccount = 'Source and destination accounts must differ.';
 
     const amt = parseFloat(form.amount);
     if (!form.amount) {
@@ -79,24 +52,23 @@ export default function CreatePayment() {
     }
 
     setServerError('');
+    setLoading(true);
     try {
       const payload = {
-        sourceAccount:      form.sourceAccount.trim(),
-        destinationAccount: form.destinationAccount.trim(),
-        amount:             parseFloat(form.amount),
-        currency:           form.currency,
-        reference:          form.reference.trim() || null,
-        idempotencyKey:     form.idempotencyKey.trim(),
+        amount: parseFloat(form.amount),
+        currency: form.currency,
       };
       const payment = await localCreatePayment(payload);
       navigate(`/payments/${payment.id}`);
     } catch (err) {
       setServerError(err.message || 'Failed to create payment. Please try again.');
+    } finally {
+      setLoading(false);
     }
   }
 
   function handleReset() {
-    setForm({ ...INITIAL_FORM, idempotencyKey: generateIdempotencyKey() });
+    setForm({ ...INITIAL_FORM });
     setFieldErrors({});
     setServerError('');
   }
@@ -120,49 +92,6 @@ export default function CreatePayment() {
         {serverError && <div className="alert alert-error">{serverError}</div>}
 
         <form onSubmit={handleSubmit} noValidate>
-          {/* Accounts */}
-          <div className="form-row">
-            <div className="form-group">
-              <label htmlFor="sourceAccount">Source Account *</label>
-              <input
-                id="sourceAccount"
-                name="sourceAccount"
-                type="text"
-                className={`form-control ${fieldErrors.sourceAccount ? 'error' : ''}`}
-                value={form.sourceAccount}
-                onChange={handleChange}
-                placeholder="Enter your 12 digit account number"
-                disabled={loading}
-                inputMode="numeric"
-                pattern="[0-9]{12}"
-                maxLength={12}
-              />
-              {fieldErrors.sourceAccount && (
-                <div className="form-error">{fieldErrors.sourceAccount}</div>
-              )}
-            </div>
-
-            <div className="form-group">
-              <label htmlFor="destinationAccount">Destination Account *</label>
-              <input
-                id="destinationAccount"
-                name="destinationAccount"
-                type="text"
-                className={`form-control ${fieldErrors.destinationAccount ? 'error' : ''}`}
-                value={form.destinationAccount}
-                onChange={handleChange}
-                placeholder="Enter your 12 digit account number"
-                disabled={loading}
-                inputMode="numeric"
-                pattern="[0-9]{12}"
-                maxLength={12}
-              />
-              {fieldErrors.destinationAccount && (
-                <div className="form-error">{fieldErrors.destinationAccount}</div>
-              )}
-            </div>
-          </div>
-
           {/* Amount & Currency */}
           <div className="form-row">
             <div className="form-group">
@@ -202,50 +131,6 @@ export default function CreatePayment() {
               {fieldErrors.currency && (
                 <div className="form-error">{fieldErrors.currency}</div>
               )}
-            </div>
-          </div>
-
-          {/* Reference */}
-          <div className="form-group">
-            <label htmlFor="reference">Reference / Description (optional)</label>
-            <input
-              id="reference"
-              name="reference"
-              type="text"
-              className="form-control"
-              value={form.reference}
-              onChange={handleChange}
-              placeholder="e.g. Invoice #12345"
-              disabled={loading}
-              maxLength={255}
-            />
-          </div>
-
-          {/* Idempotency Key — auto-generated, last 4 digits visible */}
-          <div className="form-group">
-            <label>
-              Idempotency Key
-              <span style={{ fontWeight: 400, color: '#9aa0a6', marginLeft: '8px', fontSize: '11.5px' }}>
-                Auto-generated · Prevents duplicate submissions
-              </span>
-            </label>
-            <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-              <div
-                className="form-control"
-                style={{ fontFamily: 'monospace', fontSize: '12.5px', background: '#f8f9fa', cursor: 'default', userSelect: 'none', letterSpacing: '1px', color: '#9aa0a6' }}
-              >
-                {'•'.repeat(Math.max(0, form.idempotencyKey.length - 4))}
-                <span style={{ color: '#3c4043', fontWeight: 600 }}>{form.idempotencyKey.slice(-4)}</span>
-              </div>
-              <button
-                type="button"
-                className="btn btn-secondary btn-sm"
-                onClick={() => setForm((prev) => ({ ...prev, idempotencyKey: generateIdempotencyKey() }))}
-                disabled={loading}
-                title="Regenerate key"
-              >
-                ↺
-              </button>
             </div>
           </div>
 

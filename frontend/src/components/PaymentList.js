@@ -120,10 +120,6 @@ export default function PaymentList() {
                   <th>Amount</th>
                   <th>Currency</th>
                   <th>Status</th>
-                  <th>Source Account</th>
-                  <th>Destination Account</th>
-                  <th>Reference</th>
-                  <th>Created</th>
                 </tr>
               </thead>
               <tbody>
@@ -136,12 +132,6 @@ export default function PaymentList() {
                     <td>{p.currency}</td>
                     <td>
                       <span className={`badge badge-${p.status}`}>{p.status}</span>
-                    </td>
-                    <td>{p.sourceAccount}</td>
-                    <td>{p.destinationAccount}</td>
-                    <td style={{ color: '#9aa0a6' }}>{p.reference || '—'}</td>
-                    <td style={{ color: '#9aa0a6', fontSize: '12px', whiteSpace: 'nowrap' }}>
-                      {p.createdAt ? new Date(p.createdAt).toLocaleString() : '—'}
                     </td>
                   </tr>
                 ))}
