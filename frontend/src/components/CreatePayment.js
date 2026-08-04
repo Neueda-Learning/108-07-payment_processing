@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { localCreatePayment } from '../services/localPayments';
 
-const CURRENCIES = ['USD', 'EUR', 'GBP', 'JPY', 'CAD', 'AUD', 'CHF', 'CNY'];
+const CURRENCIES = ['USD', 'EUR', 'INR'];
 
 const INITIAL_FORM = {
   sourceAccount: '',
@@ -29,7 +29,11 @@ export default function CreatePayment() {
 
   function handleChange(e) {
     const { name, value } = e.target;
-    setForm((prev) => ({ ...prev, [name]: value }));
+    const sanitizedValue =
+      name === 'sourceAccount' || name === 'destinationAccount'
+        ? value.replace(/\D/g, '').slice(0, 12)
+        : value;
+    setForm((prev) => ({ ...prev, [name]: sanitizedValue }));
     setFieldErrors((prev) => ({ ...prev, [name]: '' }));
     setServerError('');
   }
@@ -39,9 +43,13 @@ export default function CreatePayment() {
 
     if (!form.sourceAccount.trim())
       errors.sourceAccount = 'Source account is required.';
+    else if (!/^\d{12}$/.test(form.sourceAccount.trim()))
+      errors.sourceAccount = 'Source account must be exactly 12 digits.';
 
     if (!form.destinationAccount.trim())
       errors.destinationAccount = 'Destination account is required.';
+    else if (!/^\d{12}$/.test(form.destinationAccount.trim()))
+      errors.destinationAccount = 'Destination account must be exactly 12 digits.';
     else if (form.destinationAccount.trim() === form.sourceAccount.trim())
       errors.destinationAccount = 'Source and destination accounts must differ.';
 
@@ -123,8 +131,11 @@ export default function CreatePayment() {
                 className={`form-control ${fieldErrors.sourceAccount ? 'error' : ''}`}
                 value={form.sourceAccount}
                 onChange={handleChange}
-                placeholder="e.g. ACC-001"
+                placeholder="Enter your 12 digit account number"
                 disabled={loading}
+                inputMode="numeric"
+                pattern="[0-9]{12}"
+                maxLength={12}
               />
               {fieldErrors.sourceAccount && (
                 <div className="form-error">{fieldErrors.sourceAccount}</div>
@@ -140,8 +151,11 @@ export default function CreatePayment() {
                 className={`form-control ${fieldErrors.destinationAccount ? 'error' : ''}`}
                 value={form.destinationAccount}
                 onChange={handleChange}
-                placeholder="e.g. ACC-002"
+                placeholder="Enter your 12 digit account number"
                 disabled={loading}
+                inputMode="numeric"
+                pattern="[0-9]{12}"
+                maxLength={12}
               />
               {fieldErrors.destinationAccount && (
                 <div className="form-error">{fieldErrors.destinationAccount}</div>

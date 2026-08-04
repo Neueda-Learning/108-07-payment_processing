@@ -32,6 +32,16 @@ export function decodeToken(token) {
 
 export function localRegister(username, password) {
   const users = getUsers();
+  const passwordPattern = /^(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9])\S{8,12}$/;
+
+  if (!passwordPattern.test(password)) {
+    const err = new Error(
+      'Password must be 8-12 characters with at least 1 capital letter, 1 number, and 1 special character (no spaces).'
+    );
+    err.code = 'WEAK_PASSWORD';
+    throw err;
+  }
+
   const exists = users.some(
     (u) => u.username.toLowerCase() === username.toLowerCase()
   );

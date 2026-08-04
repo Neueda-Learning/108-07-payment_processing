@@ -55,7 +55,7 @@ export default function Navbar({ width = 360, onWidthChange }) {
   return (
     <nav className="navbar" style={{ width }}>
       <div className="navbar-brand">
-        <h2>💳 PaySystem</h2>
+        <h2>💳 FlashPay</h2>
         <span>Payment Processing</span>
       </div>
 

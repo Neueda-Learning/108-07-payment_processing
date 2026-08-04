@@ -283,6 +283,12 @@ body {
   margin-top: 4px;
 }
 
+.form-hint {
+  font-size: 12px;
+  color: var(--gray-600);
+  margin-top: 6px;
+}
+
 /* ── Status Badges ── */
 .badge {
   display: inline-flex;

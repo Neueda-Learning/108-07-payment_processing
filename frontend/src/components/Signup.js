@@ -31,8 +31,9 @@ export default function Signup() {
 
     if (!form.password) {
       errors.password = 'Password is required.';
-    } else if (form.password.length < 6) {
-      errors.password = 'Password must be at least 6 characters.';
+    } else if (!/^(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9])\S{8,12}$/.test(form.password)) {
+      errors.password =
+        'Password must be 8-12 characters with at least 1 capital letter, 1 number, and 1 special character (no spaces).';
     }
 
     if (!form.confirmPassword) {
@@ -109,8 +110,11 @@ export default function Signup() {
               onChange={handleChange}
               autoComplete="new-password"
               disabled={loading}
-              placeholder="At least 6 characters"
+              placeholder="8-12 chars, 1 capital, 1 number, 1 special"
             />
+            <div className="form-hint">
+              Password recommendation: 8-12 characters, at least 1 capital letter, 1 special character, and 1 number.
+            </div>
             {fieldErrors.password && (
               <div className="form-error">{fieldErrors.password}</div>
             )}
