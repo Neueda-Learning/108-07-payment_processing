@@ -12,10 +12,6 @@ public interface PaymentRepository extends JpaRepository<Payment, UUID> {
 
 	List<Payment> findByStatus(PaymentStatus status);
 
-	List<Payment> findAllByOrderByCreatedAtDesc();
-
-	List<Payment> findByStatusOrderByCreatedAtDesc(PaymentStatus status);
-
 	// Optional<Payment> findByIdempotencyKey(String idempotencyKey);
 
 	long countByStatus(PaymentStatus status);
