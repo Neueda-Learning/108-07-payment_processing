@@ -45,7 +45,7 @@ export default function Signup() {
     return errors;
   }
 
-  function handleSubmit(e) {
+  async function handleSubmit(e) {
     e.preventDefault();
     const errors = validate();
     if (Object.keys(errors).length > 0) {
@@ -55,7 +55,7 @@ export default function Signup() {
 
     setLoading(true);
     try {
-      localRegister(form.username.trim(), form.password);
+      await localRegister(form.username.trim(), form.password);
       // Account created — redirect to login with success message
       navigate('/login', { state: { registered: true }, replace: true });
     } catch (err) {

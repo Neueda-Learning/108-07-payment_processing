@@ -42,12 +42,14 @@ export default function PaymentDetails() {
   const autoTimerRef = useRef(null);
   const countdownRef = useRef(null);
 
-  const loadPayment = useCallback(() => {
+  const loadPayment = useCallback(async () => {
     setLoading(true);
     setError('');
     try {
-      setPayment(localGetPaymentById(id));
-      setHistory(localGetPaymentHistory(id));
+      const paymentData = await localGetPaymentById(id);
+      const historyData = await localGetPaymentHistory(id);
+      setPayment(paymentData);
+      setHistory(historyData);
     } catch (err) {
       setError(err.code === 'PAYMENT_NOT_FOUND' ? 'Payment not found.' : 'Failed to load payment details.');
     } finally {
@@ -78,13 +80,13 @@ export default function PaymentDetails() {
       if (cd <= 0) clearInterval(countdownRef.current);
     }, 1000);
 
-    autoTimerRef.current = setTimeout(() => {
+    autoTimerRef.current = setTimeout(async () => {
       clearInterval(countdownRef.current);
       setAutoCountdown(0);
       const currentStatus = payment.status;
       try {
-        localAdvanceStatus(id);
-        loadPayment();
+        await localAdvanceStatus(id);
+        await loadPayment();
       } catch (err) {
         setAutoProcessing(false);
         setFailureDetails({

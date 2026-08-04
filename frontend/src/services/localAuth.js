@@ -1,19 +1,4 @@
-// Local authentication service — stores users in localStorage.
-// Replace these calls with real API calls once the Spring Boot backend is running.
-
-const USERS_KEY = 'pps_users';
-
-function getUsers() {
-  try {
-    return JSON.parse(localStorage.getItem(USERS_KEY)) || [];
-  } catch {
-    return [];
-  }
-}
-
-function saveUsers(users) {
-  localStorage.setItem(USERS_KEY, JSON.stringify(users));
-}
+import { authApi } from './api';
 
 // Creates a simple signed-looking session token (not a real JWT).
 // Good enough for frontend-only mode; replace with real JWT from backend.
@@ -30,8 +15,7 @@ export function decodeToken(token) {
   }
 }
 
-export function localRegister(username, password) {
-  const users = getUsers();
+export async function localRegister(username, password) {
   const passwordPattern = /^(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9])\S{8,12}$/;
 
   if (!passwordPattern.test(password)) {
@@ -42,30 +26,11 @@ export function localRegister(username, password) {
     throw err;
   }
 
-  const exists = users.some(
-    (u) => u.username.toLowerCase() === username.toLowerCase()
-  );
-  if (exists) {
-    const err = new Error('Username already taken.');
-    err.code = 'USERNAME_TAKEN';
-    throw err;
-  }
-  users.push({ username, password }); // demo only — backend will hash with BCrypt
-  saveUsers(users);
-  return makeToken(username);
+  const res = await authApi.register(username, password);
+  return res.data?.token || makeToken(username);
 }
 
-export function localLogin(username, password) {
-  const users = getUsers();
-  const user = users.find(
-    (u) =>
-      u.username.toLowerCase() === username.toLowerCase() &&
-      u.password === password
-  );
-  if (!user) {
-    const err = new Error('Invalid username or password.');
-    err.code = 'INVALID_CREDENTIALS';
-    throw err;
-  }
-  return makeToken(username);
+export async function localLogin(username, password) {
+  const res = await authApi.login(username, password);
+  return res.data?.token || makeToken(username);
 }

@@ -70,7 +70,7 @@ export default function CreatePayment() {
     return errors;
   }
 
-  function handleSubmit(e) {
+  async function handleSubmit(e) {
     e.preventDefault();
     const errors = validate();
     if (Object.keys(errors).length > 0) {
@@ -88,7 +88,7 @@ export default function CreatePayment() {
         reference:          form.reference.trim() || null,
         idempotencyKey:     form.idempotencyKey.trim(),
       };
-      const payment = localCreatePayment(payload);
+      const payment = await localCreatePayment(payload);
       navigate(`/payments/${payment.id}`);
     } catch (err) {
       setServerError(err.message || 'Failed to create payment. Please try again.');

@@ -1,0 +1,68 @@
+{
+  "users": [
+    {
+      "id": "u1",
+      "username": "demo",
+      "password": "Demo@1234",
+      "createdAt": "2026-08-04T00:00:00.000Z"
+    },
+    {
+      "username": "abc",
+      "password": "01Sp==23@",
+      "createdAt": "2026-08-04T09:24:36.779Z",
+      "id": "WerppV_f3V4"
+    },
+    {
+      "username": "abcd",
+      "password": "01Sp==23@",
+      "createdAt": "2026-08-04T09:25:22.056Z",
+      "id": "EluqOA2GtAM"
+    }
+  ],
+  "payments": [
+    {
+      "id": "z_GY0_NMQzA",
+      "sourceAccount": "123456789011",
+      "destinationAccount": "123456789000",
+      "amount": 123,
+      "currency": "USD",
+      "reference": null,
+      "idempotencyKey": "idem-1785835420383-2gjew00",
+      "status": "COMPLETED",
+      "errorCode": null,
+      "errorMessage": null,
+      "createdAt": "2026-08-04T09:23:45.624Z",
+      "updatedAt": "2026-08-04T09:23:54.833Z"
+    }
+  ],
+  "paymentHistory": [
+    {
+      "paymentId": "AFHPRF4ZWJAF",
+      "fromStatus": null,
+      "status": "CREATED",
+      "timestamp": "2026-08-04T09:23:45.638Z",
+      "errorCode": null,
+      "note": "Payment submitted",
+      "id": "Favueeq0-20"
+    },
+    {
+      "paymentId": "z_GY0_NMQzA",
+      "fromStatus": "VALIDATED",
+      "status": "SENT",
+      "timestamp": "2026-08-04T09:23:51.799Z",
+      "errorCode": null,
+      "note": "Advanced to SENT",
+      "id": "6tcH3FZp9S0"
+    },
+    {
+      "paymentId": "z_GY0_NMQzA",
+      "fromStatus": "SENT",
+      "status": "COMPLETED",
+      "timestamp": "2026-08-04T09:23:54.842Z",
+      "errorCode": null,
+      "note": "Advanced to COMPLETED",
+      "id": "SPNlv23Wxds"
+    }
+  ],
+  "$schema": "./node_modules/json-server/schema.json"
+}
