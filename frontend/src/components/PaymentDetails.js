@@ -132,6 +132,10 @@ export default function PaymentDetails() {
 
   if (!payment) return null;
 
+  const createdEntry = history.find((h) => h.status === 'CREATED');
+  const lastEntry = history.length ? history[history.length - 1] : null;
+  const failureEntry = history.slice().reverse().find((h) => h.status === 'FAILED');
+
   return (
     <div>
       {/* Breadcrumb */}
@@ -188,53 +192,33 @@ export default function PaymentDetails() {
             <span>{payment.currency}</span>
           </div>
           <div className="detail-item">
-            <label>Source Account</label>
-            <span>{payment.sourceAccount}</span>
-          </div>
-          <div className="detail-item">
-            <label>Destination Account</label>
-            <span>{payment.destinationAccount}</span>
-          </div>
-          <div className="detail-item">
-            <label>Reference</label>
-            <span>{payment.reference || '—'}</span>
-          </div>
-          <div className="detail-item">
-            <label>Idempotency Key</label>
-            <span className="mono">
-              {payment.idempotencyKey
-                ? '•'.repeat(Math.max(0, payment.idempotencyKey.length - 4)) + payment.idempotencyKey.slice(-4)
-                : '—'}
-            </span>
-          </div>
-          <div className="detail-item">
             <label>Created At</label>
-            <span>{payment.createdAt ? new Date(payment.createdAt).toLocaleString() : '—'}</span>
+            <span>{createdEntry?.timestamp ? new Date(createdEntry.timestamp).toLocaleString() : '—'}</span>
           </div>
           <div className="detail-item">
-            <label>Updated At</label>
-            <span>{payment.updatedAt ? new Date(payment.updatedAt).toLocaleString() : '—'}</span>
+            <label>Last Updated</label>
+            <span>{lastEntry?.timestamp ? new Date(lastEntry.timestamp).toLocaleString() : '—'}</span>
           </div>
         </div>
 
         {/* Error details */}
-        {payment.status === 'FAILED' && payment.errorCode && (
+        {payment.status === 'FAILED' && failureEntry?.errorCode && (
           <div style={{ marginTop: '16px', padding: '14px', background: 'var(--danger-light)', borderRadius: '8px' }}>
             <div style={{ fontWeight: 700, color: 'var(--danger)', marginBottom: '6px', fontSize: '13px' }}>
               ⚠ Failure Details
             </div>
             <div style={{ display: 'flex', gap: '8px', alignItems: 'center', marginBottom: '4px' }}>
               <span style={{ fontSize: '12px', color: '#5f6368' }}>Error Code:</span>
-              <span className="error-code">{payment.errorCode}</span>
+              <span className="error-code">{failureEntry.errorCode}</span>
             </div>
-            {ERROR_CODE_DESCRIPTIONS[payment.errorCode] && (
+            {ERROR_CODE_DESCRIPTIONS[failureEntry.errorCode] && (
               <div style={{ fontSize: '13px', color: '#5f6368' }}>
-                {ERROR_CODE_DESCRIPTIONS[payment.errorCode]}
+                {ERROR_CODE_DESCRIPTIONS[failureEntry.errorCode]}
               </div>
             )}
-            {payment.errorMessage && (
+            {failureEntry.errorMessage && (
               <div style={{ fontSize: '13px', color: 'var(--danger)', marginTop: '6px' }}>
-                {payment.errorMessage}
+                {failureEntry.errorMessage}
               </div>
             )}
           </div>
@@ -256,27 +240,23 @@ export default function PaymentDetails() {
                 <div className="timeline-content">
                   <div className="timeline-status">
                     <span className={`badge badge-${entry.status}`}>{entry.status}</span>
-                    {entry.fromStatus && (
+                    {entry.oldStatus && (
                       <span style={{ fontSize: '12px', color: '#9aa0a6', marginLeft: '8px' }}>
-                        ← from {entry.fromStatus}
+                        ← from {entry.oldStatus}
                       </span>
                     )}
                   </div>
                   <div className="timeline-time">
-                    {entry.timestamp
-                      ? new Date(entry.timestamp).toLocaleString()
-                      : entry.changedAt
-                      ? new Date(entry.changedAt).toLocaleString()
-                      : '—'}
+                    {entry.timestamp ? new Date(entry.timestamp).toLocaleString() : '—'}
                   </div>
-                  {(entry.note || entry.reason || entry.errorCode) && (
+                  {(entry.reason || entry.errorCode) && (
                     <div className="timeline-note">
                       {entry.errorCode && (
                         <span className="error-code" style={{ marginRight: '6px' }}>
                           {entry.errorCode}
                         </span>
                       )}
-                      {entry.note || entry.reason || ''}
+                      {entry.reason || ''}
                     </div>
                   )}
                 </div>

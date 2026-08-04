@@ -113,9 +113,6 @@ export default function Dashboard() {
                   <th>Payment ID</th>
                   <th>Amount</th>
                   <th>Status</th>
-                  <th>Source Account</th>
-                  <th>Destination</th>
-                  <th>Created</th>
                 </tr>
               </thead>
               <tbody>
@@ -127,11 +124,6 @@ export default function Dashboard() {
                       <span style={{ color: '#9aa0a6', fontSize: '12px' }}>{p.currency}</span>
                     </td>
                     <td><span className={`badge badge-${p.status}`}>{p.status}</span></td>
-                    <td>{p.sourceAccount}</td>
-                    <td>{p.destinationAccount}</td>
-                    <td style={{ color: '#9aa0a6', fontSize: '12px' }}>
-                      {p.createdAt ? new Date(p.createdAt).toLocaleString() : '—'}
-                    </td>
                   </tr>
                 ))}
               </tbody>
