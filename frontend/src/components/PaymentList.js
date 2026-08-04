@@ -2,7 +2,7 @@ import React, { useEffect, useState, useCallback } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { localGetAllPayments } from '../services/localPayments';
 
-const STATUSES = ['ALL', 'CREATED', 'VALIDATED', 'SENT', 'COMPLETED', 'FAILED'];
+const STATUSES = ['ALL', 'COMPLETED', 'FAILED'];
 
 export default function PaymentList() {
   const navigate = useNavigate();
@@ -45,20 +45,21 @@ export default function PaymentList() {
 
   const filtered = searchTerm.trim()
     ? payments.filter(
-        (p) =>
-          p.id?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          p.sourceAccount?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          p.destinationAccount?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          p.reference?.toLowerCase().includes(searchTerm.toLowerCase())
+        (p) => p.id?.toLowerCase().includes(searchTerm.trim().toLowerCase())
       )
     : payments;
+
+  const hasSearch = searchTerm.trim().length > 0;
+  const resultCountText = hasSearch
+    ? `${filtered.length} payment${filtered.length !== 1 ? 's' : ''} found with this ID`
+    : `${payments.length} payment${payments.length !== 1 ? 's' : ''} found`;
 
   return (
     <div>
       <div className="page-header">
         <div>
           <h1>Payments</h1>
-          <p>{payments.length} payment{payments.length !== 1 ? 's' : ''} found</p>
+          <p>{resultCountText}</p>
         </div>
         <div style={{ display: 'flex', gap: '10px' }}>
           <button className="btn btn-secondary btn-sm" onClick={() => loadPayments(activeStatus)}>
@@ -84,9 +85,10 @@ export default function PaymentList() {
         <input
           type="text"
           className="form-control search-input"
-          placeholder="Search by ID, account, reference…"
+          placeholder="Search by Payment ID"
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
+          maxLength={12}
         />
       </div>
 

@@ -5,17 +5,29 @@ const PAYMENTS_KEY = 'pps_payments';
 const HISTORY_KEY  = 'pps_history';
 
 // ── helpers ────────────────────────────────────────────────────────────────
-function uuid() {
-  return crypto.randomUUID
-    ? crypto.randomUUID()
-    : 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
-        const r = (Math.random() * 16) | 0;
-        return (c === 'x' ? r : (r & 0x3) | 0x8).toString(16);
-      });
-}
 
 function now() {
   return new Date().toISOString();
+}
+
+function generatePaymentId(existingPayments) {
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+  const length = 12;
+
+  for (let attempt = 0; attempt < 50; attempt += 1) {
+    let id = '';
+    for (let i = 0; i < length; i += 1) {
+      id += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+
+    if (!existingPayments.some((p) => p.id === id)) {
+      return id;
+    }
+  }
+
+  return (Date.now().toString(36).toUpperCase() + Math.random().toString(36).slice(2).toUpperCase())
+    .slice(0, 12)
+    .padEnd(12, '0');
 }
 
 function getPayments() {
@@ -63,7 +75,7 @@ export function localCreatePayment(payload) {
   }
 
   const payment = {
-    id:                 uuid(),
+    id:                 generatePaymentId(payments),
     sourceAccount:      payload.sourceAccount,
     destinationAccount: payload.destinationAccount,
     amount:             payload.amount,

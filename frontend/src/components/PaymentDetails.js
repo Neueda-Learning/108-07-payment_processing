@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { Link, useParams, useNavigate } from 'react-router-dom';
-import { localGetPaymentById, localGetPaymentHistory, localAdvanceStatus, localFailPayment } from '../services/localPayments';
+import { localGetPaymentById, localGetPaymentHistory, localAdvanceStatus } from '../services/localPayments';
 
 const STATUS_FLOW = ['CREATED', 'VALIDATED', 'SENT', 'COMPLETED'];
 const AUTO_ADVANCE_STATUSES = ['CREATED', 'VALIDATED', 'SENT'];
@@ -32,10 +32,7 @@ export default function PaymentDetails() {
   const [payment, setPayment] = useState(null);
   const [history, setHistory] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [actionLoading, setActionLoading] = useState(false);
   const [error, setError] = useState('');
-  const [actionError, setActionError] = useState('');
-  const [successMsg, setSuccessMsg] = useState('');
 
   // Auto-advance state
   const [autoProcessing, setAutoProcessing] = useState(false);
@@ -106,41 +103,6 @@ export default function PaymentDetails() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [payment?.status, id]);
 
-  function handleAdvance() {
-    setActionError('');
-    setSuccessMsg('');
-    setActionLoading(true);
-    try {
-      localAdvanceStatus(id);
-      setSuccessMsg('Payment status advanced successfully.');
-      loadPayment();
-    } catch (err) {
-      setActionError(err.message || 'Failed to advance payment status.');
-    } finally {
-      setActionLoading(false);
-    }
-  }
-
-  function handleFail() {
-    setActionError('');
-    setSuccessMsg('');
-    const errorCode = window.prompt(
-      'Enter error code for failure (e.g. PROCESSING_ERROR, NETWORK_ERROR):',
-      'PROCESSING_ERROR'
-    );
-    if (!errorCode) return;
-    setActionLoading(true);
-    try {
-      localFailPayment(id, errorCode.trim().toUpperCase());
-      setSuccessMsg('Payment marked as FAILED.');
-      loadPayment();
-    } catch (err) {
-      setActionError(err.message || 'Failed to mark payment as failed.');
-    } finally {
-      setActionLoading(false);
-    }
-  }
-
   if (loading) {
     return (
       <div className="loading-wrapper">
@@ -168,10 +130,6 @@ export default function PaymentDetails() {
 
   if (!payment) return null;
 
-  const next = nextStatus(payment.status);
-  const canAdvance = next !== null && payment.status !== 'FAILED';
-  const canFail = payment.status !== 'COMPLETED' && payment.status !== 'FAILED';
-
   return (
     <div>
       {/* Breadcrumb */}
@@ -190,29 +148,6 @@ export default function PaymentDetails() {
           </h1>
           <p style={{ fontFamily: 'monospace', fontSize: '12px', color: '#9aa0a6' }}>{payment.id}</p>
         </div>
-        <div style={{ display: 'flex', gap: '10px' }}>
-          <button className="btn btn-secondary btn-sm" onClick={loadPayment}>
-            ↺ Refresh
-          </button>
-          {canAdvance && (
-            <button
-              className="btn btn-primary btn-sm"
-              onClick={handleAdvance}
-              disabled={actionLoading}
-            >
-              {actionLoading ? 'Processing…' : `→ Advance to ${next}`}
-            </button>
-          )}
-          {canFail && (
-            <button
-              className="btn btn-danger btn-sm"
-              onClick={handleFail}
-              disabled={actionLoading}
-            >
-              ✕ Mark as Failed
-            </button>
-          )}
-        </div>
       </div>
 
       {/* Auto-processing banner */}
@@ -226,9 +161,6 @@ export default function PaymentDetails() {
           </span>
         </div>
       )}
-
-      {actionError  && <div className="alert alert-error">{actionError}</div>}
-      {successMsg   && <div className="alert alert-success">{successMsg}</div>}
 
       {/* Payment info card */}
       <div className="card" style={{ marginBottom: '20px' }}>

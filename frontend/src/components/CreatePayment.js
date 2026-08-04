@@ -25,7 +25,7 @@ export default function CreatePayment() {
   });
   const [fieldErrors, setFieldErrors] = useState({});
   const [serverError, setServerError] = useState('');
-  const [loading, setLoading] = useState(false);
+  const [loading] = useState(false);
 
   function handleChange(e) {
     const { name, value } = e.target;
