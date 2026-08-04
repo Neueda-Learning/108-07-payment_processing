@@ -126,6 +126,24 @@ body {
   border-top: 1px solid var(--gray-200);
 }
 
+/* Drag handle for sidebar resize */
+.navbar-drag-handle {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 6px;
+  height: 100%;
+  cursor: col-resize;
+  background: transparent;
+  transition: background var(--transition);
+  z-index: 110;
+}
+
+.navbar-drag-handle:hover,
+.navbar-drag-handle.dragging {
+  background: rgba(26, 115, 232, 0.22);
+}
+
 .logout-btn {
   display: flex;
   align-items: center;
@@ -498,36 +516,36 @@ tbody td.id-cell {
 }
 
 .login-card {
-  width: 380px;
+  width: 475px;
   background: var(--white);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-lg);
-  padding: 40px;
+  padding: 50px;
 }
 
 .login-card h1 {
-  font-size: 22px;
+  font-size: 27px;
   font-weight: 700;
   color: var(--gray-900);
   margin-bottom: 4px;
 }
 
 .login-card .subtitle {
-  font-size: 13px;
+  font-size: 16px;
   color: var(--gray-600);
-  margin-bottom: 28px;
+  margin-bottom: 35px;
 }
 
 .login-logo {
-  width: 48px;
-  height: 48px;
+  width: 60px;
+  height: 60px;
   background: var(--primary-light);
   border-radius: 12px;
   display: flex;
   align-items: center;
   justify-content: center;
-  margin-bottom: 20px;
-  font-size: 22px;
+  margin-bottom: 25px;
+  font-size: 27px;
 }
 
 /* ── Alerts ── */
@@ -617,4 +635,90 @@ tbody td.id-cell {
   font-size: 24px;
   font-weight: 700;
   color: var(--gray-900);
+}
+
+/* ── Modal overlay / failure popup ── */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.48);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  animation: fadeIn 0.15s ease;
+}
+
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+.modal-box {
+  background: var(--white);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  padding: 40px 44px;
+  max-width: 460px;
+  width: 90%;
+  text-align: center;
+  animation: slideUp 0.2s ease;
+}
+
+@keyframes slideUp {
+  from { transform: translateY(24px); opacity: 0; }
+  to   { transform: translateY(0);    opacity: 1; }
+}
+
+.modal-icon-fail { font-size: 48px; margin-bottom: 16px; }
+
+.modal-title {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--gray-900);
+  margin-bottom: 10px;
+}
+
+.modal-stage {
+  font-size: 14px;
+  color: var(--gray-600);
+  margin-bottom: 10px;
+}
+
+.modal-message {
+  font-size: 13px;
+  color: var(--danger);
+  margin: 12px 0 24px;
+  padding: 10px 14px;
+  background: var(--danger-light);
+  border-radius: var(--radius);
+  word-break: break-word;
+}
+
+.modal-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+}
+
+/* ── Auto-processing banner ── */
+.auto-processing-banner {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 18px;
+  background: var(--info-light);
+  border: 1px solid rgba(26, 115, 232, 0.3);
+  border-radius: var(--radius);
+  font-size: 13.5px;
+  color: var(--primary);
+  font-weight: 500;
+  margin-bottom: 18px;
+}
+
+.auto-processing-spinner {
+  width: 18px;
+  height: 18px;
+  border: 2.5px solid rgba(26, 115, 232, 0.25);
+  border-top-color: var(--primary);
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+  flex-shrink: 0;
 }

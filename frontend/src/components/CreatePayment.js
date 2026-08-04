@@ -59,9 +59,6 @@ export default function CreatePayment() {
     if (!form.currency)
       errors.currency = 'Currency is required.';
 
-    if (!form.idempotencyKey.trim())
-      errors.idempotencyKey = 'Idempotency key is required.';
-
     return errors;
   }
 
@@ -111,7 +108,7 @@ export default function CreatePayment() {
         </div>
       </div>
 
-      <div className="card" style={{ maxWidth: '640px' }}>
+      <div className="card" style={{ maxWidth: '800px' }}>
         {serverError && <div className="alert alert-error">{serverError}</div>}
 
         <form onSubmit={handleSubmit} noValidate>
@@ -210,40 +207,32 @@ export default function CreatePayment() {
             />
           </div>
 
-          {/* Idempotency Key */}
+          {/* Idempotency Key — auto-generated, last 4 digits visible */}
           <div className="form-group">
-            <label htmlFor="idempotencyKey">
-              Idempotency Key *
+            <label>
+              Idempotency Key
               <span style={{ fontWeight: 400, color: '#9aa0a6', marginLeft: '8px', fontSize: '11.5px' }}>
-                Prevents duplicate submissions
+                Auto-generated · Prevents duplicate submissions
               </span>
             </label>
-            <div style={{ display: 'flex', gap: '8px' }}>
-              <input
-                id="idempotencyKey"
-                name="idempotencyKey"
-                type="text"
-                className={`form-control ${fieldErrors.idempotencyKey ? 'error' : ''}`}
-                value={form.idempotencyKey}
-                onChange={handleChange}
-                disabled={loading}
-                style={{ fontFamily: 'monospace', fontSize: '12.5px' }}
-              />
+            <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+              <div
+                className="form-control"
+                style={{ fontFamily: 'monospace', fontSize: '12.5px', background: '#f8f9fa', cursor: 'default', userSelect: 'none', letterSpacing: '1px', color: '#9aa0a6' }}
+              >
+                {'•'.repeat(Math.max(0, form.idempotencyKey.length - 4))}
+                <span style={{ color: '#3c4043', fontWeight: 600 }}>{form.idempotencyKey.slice(-4)}</span>
+              </div>
               <button
                 type="button"
                 className="btn btn-secondary btn-sm"
-                onClick={() =>
-                  setForm((prev) => ({ ...prev, idempotencyKey: generateIdempotencyKey() }))
-                }
+                onClick={() => setForm((prev) => ({ ...prev, idempotencyKey: generateIdempotencyKey() }))}
                 disabled={loading}
-                title="Generate new key"
+                title="Regenerate key"
               >
                 ↺
               </button>
             </div>
-            {fieldErrors.idempotencyKey && (
-              <div className="form-error">{fieldErrors.idempotencyKey}</div>
-            )}
           </div>
 
           {/* Actions */}

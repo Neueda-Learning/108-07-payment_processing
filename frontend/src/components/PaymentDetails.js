@@ -1,8 +1,10 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { Link, useParams, useNavigate } from 'react-router-dom';
 import { localGetPaymentById, localGetPaymentHistory, localAdvanceStatus, localFailPayment } from '../services/localPayments';
 
 const STATUS_FLOW = ['CREATED', 'VALIDATED', 'SENT', 'COMPLETED'];
+const AUTO_ADVANCE_STATUSES = ['CREATED', 'VALIDATED', 'SENT'];
+const AUTO_ADVANCE_DELAY_MS = 3000;
 
 const ERROR_CODE_DESCRIPTIONS = {
   VALIDATION_FAILED:          'Payment failed validation checks',
@@ -35,6 +37,14 @@ export default function PaymentDetails() {
   const [actionError, setActionError] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
 
+  // Auto-advance state
+  const [autoProcessing, setAutoProcessing] = useState(false);
+  const [autoCountdown, setAutoCountdown] = useState(0);
+  const [showFailureModal, setShowFailureModal] = useState(false);
+  const [failureDetails, setFailureDetails] = useState(null);
+  const autoTimerRef = useRef(null);
+  const countdownRef = useRef(null);
+
   const loadPayment = useCallback(() => {
     setLoading(true);
     setError('');
@@ -49,6 +59,52 @@ export default function PaymentDetails() {
   }, [id]);
 
   useEffect(() => { loadPayment(); }, [loadPayment]);
+
+  // Auto-advance through all 4 stages
+  useEffect(() => {
+    if (autoTimerRef.current) clearTimeout(autoTimerRef.current);
+    if (countdownRef.current) clearInterval(countdownRef.current);
+
+    if (!payment || !AUTO_ADVANCE_STATUSES.includes(payment.status)) {
+      setAutoProcessing(false);
+      setAutoCountdown(0);
+      return;
+    }
+
+    setAutoProcessing(true);
+    let cd = Math.round(AUTO_ADVANCE_DELAY_MS / 1000);
+    setAutoCountdown(cd);
+
+    countdownRef.current = setInterval(() => {
+      cd -= 1;
+      setAutoCountdown(cd);
+      if (cd <= 0) clearInterval(countdownRef.current);
+    }, 1000);
+
+    autoTimerRef.current = setTimeout(() => {
+      clearInterval(countdownRef.current);
+      setAutoCountdown(0);
+      const currentStatus = payment.status;
+      try {
+        localAdvanceStatus(id);
+        loadPayment();
+      } catch (err) {
+        setAutoProcessing(false);
+        setFailureDetails({
+          stage: currentStatus,
+          message: err.message || `Processing failed at stage: ${currentStatus}`,
+          errorCode: err.code || 'PROCESSING_ERROR',
+        });
+        setShowFailureModal(true);
+      }
+    }, AUTO_ADVANCE_DELAY_MS);
+
+    return () => {
+      clearTimeout(autoTimerRef.current);
+      clearInterval(countdownRef.current);
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [payment?.status, id]);
 
   function handleAdvance() {
     setActionError('');
@@ -159,6 +215,18 @@ export default function PaymentDetails() {
         </div>
       </div>
 
+      {/* Auto-processing banner */}
+      {autoProcessing && payment && AUTO_ADVANCE_STATUSES.includes(payment.status) && (
+        <div className="auto-processing-banner">
+          <div className="auto-processing-spinner" />
+          <span>
+            Auto-processing payment… advancing to{' '}
+            <strong>{nextStatus(payment.status)}</strong>
+            {autoCountdown > 0 ? ` in ${autoCountdown}s` : '…'}
+          </span>
+        </div>
+      )}
+
       {actionError  && <div className="alert alert-error">{actionError}</div>}
       {successMsg   && <div className="alert alert-success">{successMsg}</div>}
 
@@ -199,7 +267,11 @@ export default function PaymentDetails() {
           </div>
           <div className="detail-item">
             <label>Idempotency Key</label>
-            <span className="mono">{payment.idempotencyKey || '—'}</span>
+            <span className="mono">
+              {payment.idempotencyKey
+                ? '•'.repeat(Math.max(0, payment.idempotencyKey.length - 4)) + payment.idempotencyKey.slice(-4)
+                : '—'}
+            </span>
           </div>
           <div className="detail-item">
             <label>Created At</label>
@@ -279,6 +351,36 @@ export default function PaymentDetails() {
           </div>
         )}
       </div>
+
+      {/* Failure popup modal */}
+      {showFailureModal && failureDetails && (
+        <div className="modal-overlay" onClick={() => setShowFailureModal(false)}>
+          <div className="modal-box" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-icon-fail">⚠️</div>
+            <h3 className="modal-title">Payment Stage Failed</h3>
+            <p className="modal-stage">
+              Stage <strong>{failureDetails.stage}</strong> failed to complete
+            </p>
+            {failureDetails.errorCode && (
+              <span className="error-code" style={{ display: 'inline-block', marginBottom: '8px' }}>
+                {failureDetails.errorCode}
+              </span>
+            )}
+            <p className="modal-message">{failureDetails.message}</p>
+            <div className="modal-actions">
+              <button className="btn btn-primary" onClick={() => setShowFailureModal(false)}>
+                Dismiss
+              </button>
+              <button
+                className="btn btn-secondary"
+                onClick={() => { setShowFailureModal(false); loadPayment(); }}
+              >
+                Refresh
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

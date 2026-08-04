@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useCallback } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import Login from './components/Login';
@@ -17,11 +17,19 @@ function ProtectedRoute({ children }) {
 
 function AppRoutes() {
   const { token } = useAuth();
+  const [sidebarWidth, setSidebarWidth] = useState(() =>
+    parseInt(localStorage.getItem('pps_sidebar_width') || '360', 10)
+  );
+
+  const handleWidthChange = useCallback((w) => {
+    setSidebarWidth(w);
+    localStorage.setItem('pps_sidebar_width', String(w));
+  }, []);
 
   return (
     <Router>
-      {token && <Navbar />}
-      <div className={token ? 'main-content' : ''}>
+      {token && <Navbar width={sidebarWidth} onWidthChange={handleWidthChange} />}
+      <div className={token ? 'main-content' : ''} style={token ? { marginLeft: sidebarWidth } : {}}>
         <Routes>
           <Route
             path="/login"

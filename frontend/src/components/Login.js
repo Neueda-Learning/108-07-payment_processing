@@ -98,7 +98,7 @@ export default function Login() {
         <p style={{ textAlign: 'center', marginTop: '20px', fontSize: '13px', color: '#5f6368' }}>
           Don't have an account?{' '}
           <Link to="/signup" style={{ color: '#1a73e8', fontWeight: 600, textDecoration: 'none' }}>
-            Create one
+            Sign up
           </Link>
         </p>
       </div>
