@@ -18,7 +18,7 @@ export default function Login() {
     setError('');
   }
 
-  function handleSubmit(e) {
+  async function handleSubmit(e) {
     e.preventDefault();
     if (!form.username.trim() || !form.password.trim()) {
       setError('Username and password are required.');
@@ -27,7 +27,7 @@ export default function Login() {
 
     setLoading(true);
     try {
-      const token = localLogin(form.username.trim(), form.password);
+      const token = await localLogin(form.username.trim(), form.password);
       login(token);
       navigate('/dashboard', { replace: true });
     } catch (err) {

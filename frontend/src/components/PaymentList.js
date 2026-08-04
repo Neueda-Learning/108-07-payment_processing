@@ -17,11 +17,12 @@ export default function PaymentList() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
-  const loadPayments = useCallback((status) => {
+  const loadPayments = useCallback(async (status) => {
     setLoading(true);
     setError('');
     try {
-      setPayments(localGetAllPayments(status !== 'ALL' ? status : undefined));
+      const results = await localGetAllPayments(status !== 'ALL' ? status : undefined);
+      setPayments(results);
     } catch (err) {
       setError('Failed to load payments.');
     } finally {

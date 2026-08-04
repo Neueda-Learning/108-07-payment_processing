@@ -20,13 +20,14 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
-  const loadData = useCallback(() => {
+  const loadData = useCallback(async () => {
     setLoading(true);
     setError('');
     try {
-      const payments = localGetAllPayments();
+      const payments = await localGetAllPayments();
       setRecent(payments.slice(0, 8));
-      setStats(localGetStats());
+      const statsData = await localGetStats();
+      setStats(statsData);
     } catch (err) {
       setError('Failed to load dashboard data.');
     } finally {
