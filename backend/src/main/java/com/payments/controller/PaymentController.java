@@ -12,6 +12,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -29,6 +30,10 @@ import java.util.UUID;
  * <p>Deliberately thin: each method converts an HTTP request into a service call and
  * a status code, and nothing else. No business rules live here. Errors are not caught
  * either; the service throws and GlobalExceptionHandler translates.
+ *
+ * <p>The owning username always comes from the authenticated principal (never a
+ * request parameter), and every service call is scoped to it: a user only ever
+ * creates, lists, or advances payments touching their own accounts.
  */
 @RestController
 @RequestMapping("/api/payments")
@@ -43,17 +48,22 @@ public class PaymentController {
 
     @PostMapping
     @Operation(summary = "Create a payment",
-               description = "Creates a payment in CREATED status and records the first audit-trail entry.")
-    public ResponseEntity<PaymentResponse> createPayment(@Valid @RequestBody PaymentRequest request) {
-        return ResponseEntity.status(HttpStatus.CREATED).body(paymentService.createPayment(request));
+               description = "Creates a payment in CREATED status and records the first audit-trail entry. "
+                           + "The source account must belong to the authenticated user.")
+    public ResponseEntity<PaymentResponse> createPayment(Authentication authentication,
+                                                         @Valid @RequestBody PaymentRequest request) {
+        PaymentResponse created = paymentService.createPayment(authentication.getName(), request);
+        return ResponseEntity.status(HttpStatus.CREATED).body(created);
     }
 
     @GetMapping
     @Operation(summary = "List payments",
-               description = "Returns every payment, or only those in the given status.")
+               description = "Returns the authenticated user's payments (as source or destination account), "
+                           + "or only those in the given status.")
     public ResponseEntity<List<PaymentResponse>> listPayments(
+            Authentication authentication,
             @RequestParam(required = false) PaymentStatus status) {
-        return ResponseEntity.ok(paymentService.getAllPayments(status));
+        return ResponseEntity.ok(paymentService.getAllPayments(authentication.getName(), status));
     }
 
     /**
@@ -63,30 +73,32 @@ public class PaymentController {
      */
     @GetMapping("/stats")
     @Operation(summary = "Payment counts",
-               description = "Total number of payments plus a count for each status.")
-    public ResponseEntity<PaymentStatsResponse> getStats() {
-        return ResponseEntity.ok(paymentService.getStats());
+               description = "Total number of the authenticated user's payments plus a count for each status.")
+    public ResponseEntity<PaymentStatsResponse> getStats(Authentication authentication) {
+        return ResponseEntity.ok(paymentService.getStats(authentication.getName()));
     }
 
     @GetMapping("/{id}")
-    @Operation(summary = "Get one payment", description = "404 if no payment has this id.")
-    public ResponseEntity<PaymentResponse> getPayment(@PathVariable UUID id) {
-        return ResponseEntity.ok(paymentService.getPaymentById(id));
+    @Operation(summary = "Get one payment",
+               description = "404 if no payment has this id, or it belongs to another user.")
+    public ResponseEntity<PaymentResponse> getPayment(Authentication authentication, @PathVariable UUID id) {
+        return ResponseEntity.ok(paymentService.getPaymentById(authentication.getName(), id));
     }
 
     @GetMapping("/{id}/history")
     @Operation(summary = "Get a payment's audit trail",
                description = "Every status change for this payment, oldest first.")
-    public ResponseEntity<List<StatusHistoryResponse>> getPaymentHistory(@PathVariable UUID id) {
-        return ResponseEntity.ok(paymentService.getPaymentHistory(id));
+    public ResponseEntity<List<StatusHistoryResponse>> getPaymentHistory(Authentication authentication,
+                                                                         @PathVariable UUID id) {
+        return ResponseEntity.ok(paymentService.getPaymentHistory(authentication.getName(), id));
     }
 
     @PostMapping("/{id}/process")
     @Operation(summary = "Advance a payment",
                description = "Moves the payment one step along CREATED to VALIDATED to SENT to "
                            + "COMPLETED. 400 if it has already finished.")
-    public ResponseEntity<PaymentResponse> processPayment(@PathVariable UUID id) {
-        return ResponseEntity.ok(paymentService.advancePaymentStatus(id));
+    public ResponseEntity<PaymentResponse> processPayment(Authentication authentication, @PathVariable UUID id) {
+        return ResponseEntity.ok(paymentService.advancePaymentStatus(authentication.getName(), id));
     }
 
     @PostMapping("/{id}/fail")
@@ -94,11 +106,12 @@ public class PaymentController {
                description = "Marks the payment FAILED and records the reason on its audit trail. "
                            + "400 if it has already finished.")
     public ResponseEntity<PaymentResponse> failPayment(
+            Authentication authentication,
             @PathVariable UUID id,
             @RequestBody(required = false) FailPaymentRequest request) {
 
         // Body is optional so that "just fail it" needs no payload at all.
         String errorCode = (request == null) ? null : request.errorCode();
-        return ResponseEntity.ok(paymentService.failPayment(id, errorCode));
+        return ResponseEntity.ok(paymentService.failPayment(authentication.getName(), id, errorCode));
     }
 }

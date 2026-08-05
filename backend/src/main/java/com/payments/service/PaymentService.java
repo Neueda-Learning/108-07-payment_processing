@@ -57,7 +57,7 @@ public class PaymentService {
     }
 
     @Transactional
-    public PaymentResponse createPayment(PaymentRequest request) {
+    public PaymentResponse createPayment(String username, PaymentRequest request) {
         String idempotencyKey = normaliseIdempotencyKey(request.idempotencyKey());
         if (idempotencyKey != null) {
             paymentRepository.findByIdempotencyKey(idempotencyKey).ifPresent(existing -> {
@@ -76,6 +76,14 @@ public class PaymentService {
         ensureAccountUsable(sourceAccount, currency);
         ensureAccountUsable(destinationAccount, currency);
 
+        // A payment can only be initiated *from* an account the caller actually owns —
+        // otherwise any authenticated user could drain any other user's account by
+        // naming it as the source.
+        if (!accountNumbersForUser(username).contains(sourceAccount)) {
+            throw new PaymentValidationException("ACCOUNT_NOT_OWNED",
+                    "Source account " + sourceAccount + " does not belong to the authenticated user");
+        }
+
         Payment payment = new Payment();
         payment.setAmount(normaliseAmount(request.amount()));
         payment.setCurrency(currency);
@@ -91,24 +99,36 @@ public class PaymentService {
         return PaymentResponse.from(saved);
     }
 
+    /**
+     * Scoped to the accounts the authenticated user owns: a payment is visible to a
+     * user only if one of their accounts is its source or destination. Someone with
+     * no accounts yet has no payments to see, rather than seeing every payment ever
+     * created (which used to be the behaviour here — see CHALLENGES/bug notes).
+     */
     @Transactional(readOnly = true)
-    public List<PaymentResponse> getAllPayments(PaymentStatus status) {
+    public List<PaymentResponse> getAllPayments(String username, PaymentStatus status) {
+        List<String> accountNumbers = accountNumbersForUser(username);
+        if (accountNumbers.isEmpty()) {
+            return List.of();
+        }
+
         List<Payment> payments = (status == null)
-                ? paymentRepository.findAll()
-                : paymentRepository.findByStatus(status);
+                ? paymentRepository.findByAccountNumbers(accountNumbers)
+                : paymentRepository.findByAccountNumbersAndStatus(accountNumbers, status);
 
         return payments.stream().map(PaymentResponse::from).toList();
     }
 
     @Transactional(readOnly = true)
-    public PaymentResponse getPaymentById(UUID id) {
-        return PaymentResponse.from(findPaymentOrThrow(id));
+    public PaymentResponse getPaymentById(String username, UUID id) {
+        return PaymentResponse.from(findOwnedPaymentOrThrow(username, id));
     }
 
     @Transactional(readOnly = true)
-    public List<StatusHistoryResponse> getPaymentHistory(UUID id) {
-        // Look the payment up first so an unknown id gives 404 rather than an empty list.
-        findPaymentOrThrow(id);
+    public List<StatusHistoryResponse> getPaymentHistory(String username, UUID id) {
+        // Look the payment up first (and confirm ownership) so an unknown/foreign id
+        // gives 404 rather than an empty list.
+        findOwnedPaymentOrThrow(username, id);
 
         return historyRepository.findByPaymentIdOrderByTimestampAsc(id).stream()
                 .map(StatusHistoryResponse::from)
@@ -121,8 +141,8 @@ public class PaymentService {
      * SENT triggers the matching account side-effect (see class javadoc).
      */
     @Transactional
-    public PaymentResponse advancePaymentStatus(UUID id) {
-        Payment payment = findPaymentOrThrow(id);
+    public PaymentResponse advancePaymentStatus(String username, UUID id) {
+        Payment payment = findOwnedPaymentOrThrow(username, id);
         PaymentStatus current = payment.getStatus();
         PaymentStatus next = current.nextStatus();
 
@@ -142,8 +162,8 @@ public class PaymentService {
     }
 
     @Transactional
-    public PaymentResponse failPayment(UUID id, String errorCode) {
-        Payment payment = findPaymentOrThrow(id);
+    public PaymentResponse failPayment(String username, UUID id, String errorCode) {
+        Payment payment = findOwnedPaymentOrThrow(username, id);
         PaymentStatus current = payment.getStatus();
 
         if (current == PaymentStatus.COMPLETED || current == PaymentStatus.FAILED) {
@@ -169,15 +189,51 @@ public class PaymentService {
     }
 
     @Transactional(readOnly = true)
-    public PaymentStatsResponse getStats() {
+    public PaymentStatsResponse getStats(String username) {
+        List<String> accountNumbers = accountNumbersForUser(username);
+        List<Payment> payments = accountNumbers.isEmpty()
+                ? List.of()
+                : paymentRepository.findByAccountNumbers(accountNumbers);
+
         return new PaymentStatsResponse(
-                paymentRepository.count(),
-                paymentRepository.countByStatus(PaymentStatus.CREATED),
-                paymentRepository.countByStatus(PaymentStatus.VALIDATED),
-                paymentRepository.countByStatus(PaymentStatus.SENT),
-                paymentRepository.countByStatus(PaymentStatus.COMPLETED),
-                paymentRepository.countByStatus(PaymentStatus.FAILED)
+                payments.size(),
+                countByStatus(payments, PaymentStatus.CREATED),
+                countByStatus(payments, PaymentStatus.VALIDATED),
+                countByStatus(payments, PaymentStatus.SENT),
+                countByStatus(payments, PaymentStatus.COMPLETED),
+                countByStatus(payments, PaymentStatus.FAILED)
         );
+    }
+
+    private long countByStatus(List<Payment> payments, PaymentStatus status) {
+        return payments.stream().filter(p -> p.getStatus() == status).count();
+    }
+
+    /** Account numbers of every account the given user owns. */
+    private List<String> accountNumbersForUser(String username) {
+        return accountRepository.findByUsername(username).stream()
+                .map(Account::getAccountNumber)
+                .toList();
+    }
+
+    /** True if the payment has the given account as either its source or destination. */
+    private boolean belongsToAccounts(Payment payment, List<String> accountNumbers) {
+        return accountNumbers.contains(payment.getSourceAccount())
+                || accountNumbers.contains(payment.getDestinationAccount());
+    }
+
+    /**
+     * Looks a payment up and confirms it belongs to the given user (i.e. one of
+     * their accounts is its source or destination). A foreign payment id 404s
+     * exactly like an unknown one, so this never reveals whether the id merely
+     * belongs to someone else.
+     */
+    private Payment findOwnedPaymentOrThrow(String username, UUID id) {
+        Payment payment = findPaymentOrThrow(id);
+        if (!belongsToAccounts(payment, accountNumbersForUser(username))) {
+            throw new PaymentNotFoundException(id);
+        }
+        return payment;
     }
 
     private Payment findPaymentOrThrow(UUID id) {
