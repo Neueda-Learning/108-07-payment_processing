@@ -1,6 +1,5 @@
 package com.payments.dto;
 
-import jakarta.validation.constraints.DecimalMax;
 import jakarta.validation.constraints.Digits;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -12,8 +11,10 @@ import java.math.BigDecimal;
 /**
  * Payment creation request.
  *
- * <p>Currency is checked for length here; the ISO 4217 membership check happens in
- * PaymentService, since Bean Validation cannot express it without a custom validator.
+ * <p>Currency is checked for length here; ISO 4217 membership and the (currency
+ * specific) maximum amount are checked in PaymentService, since Bean Validation
+ * cannot express either without a custom validator - the latter because the limit
+ * depends on another field's value.
  * The source/destination-account-must-differ rule is likewise a service-level check
  * since it spans two fields.
  */
@@ -21,7 +22,6 @@ public record PaymentRequest(
 
         @NotNull(message = "Amount is required")
         @Positive(message = "Amount must be greater than zero")
-        @DecimalMax(value = "1000000.00", message = "Amount must not exceed 1,000,000")
         @Digits(integer = 7, fraction = 2, message = "Amount must have at most 2 decimal places")
         BigDecimal amount,
 

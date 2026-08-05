@@ -21,6 +21,15 @@ public class Payment {
     @Column(nullable = false, length = 3)
     private String currency;
 
+    @Column(name = "destination_currency", nullable = false, length = 3)
+    private String destinationCurrency;
+
+    @Column(name = "exchange_rate", nullable = false, precision = 19, scale = 6)
+    private BigDecimal exchangeRate;
+
+    @Column(name = "converted_amount", nullable = false, precision = 19, scale = 2)
+    private BigDecimal convertedAmount;
+
     @Column(name = "source_account", nullable = false, length = 34)
     private String sourceAccount;
 
@@ -76,6 +85,30 @@ public class Payment {
 
     public void setCurrency(String currency) {
         this.currency = currency;
+    }
+
+    public String getDestinationCurrency() {
+        return destinationCurrency;
+    }
+
+    public void setDestinationCurrency(String destinationCurrency) {
+        this.destinationCurrency = destinationCurrency;
+    }
+
+    public BigDecimal getExchangeRate() {
+        return exchangeRate;
+    }
+
+    public void setExchangeRate(BigDecimal exchangeRate) {
+        this.exchangeRate = exchangeRate;
+    }
+
+    public BigDecimal getConvertedAmount() {
+        return convertedAmount;
+    }
+
+    public void setConvertedAmount(BigDecimal convertedAmount) {
+        this.convertedAmount = convertedAmount;
     }
 
     public String getSourceAccount() {
