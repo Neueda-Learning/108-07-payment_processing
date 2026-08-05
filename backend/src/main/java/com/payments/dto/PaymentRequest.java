@@ -10,11 +10,12 @@ import jakarta.validation.constraints.Size;
 import java.math.BigDecimal;
 
 /**
- * MVP payment creation request. Account fields, reference and idempotencyKey are
- * deferred to increment 2 — see CHALLENGES.md entry 3.
+ * Payment creation request.
  *
  * <p>Currency is checked for length here; the ISO 4217 membership check happens in
  * PaymentService, since Bean Validation cannot express it without a custom validator.
+ * The source/destination-account-must-differ rule is likewise a service-level check
+ * since it spans two fields.
  */
 public record PaymentRequest(
 
@@ -26,6 +27,21 @@ public record PaymentRequest(
 
         @NotBlank(message = "Currency is required")
         @Size(min = 3, max = 3, message = "Currency must be a 3-letter ISO 4217 code")
-        String currency
+        String currency,
+
+        @NotBlank(message = "Source account is required")
+        @Size(max = 34, message = "Source account must be at most 34 characters")
+        String sourceAccount,
+
+        @NotBlank(message = "Destination account is required")
+        @Size(max = 34, message = "Destination account must be at most 34 characters")
+        String destinationAccount,
+
+        @Size(max = 255, message = "Description must be at most 255 characters")
+        String description,
+
+        @Size(max = 100, message = "Idempotency key must be at most 100 characters")
+        String idempotencyKey
 ) {
 }
+

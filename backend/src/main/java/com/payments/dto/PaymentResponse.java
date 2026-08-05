@@ -3,19 +3,27 @@ package com.payments.dto;
 import com.payments.model.Payment;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.UUID;
 
 /**
- * MVP payment view. Failure details are not carried here — they belong to the
- * transition that caused them, so clients read them from the payment's status
- * history instead. See CHALLENGES.md entry 3.
+ * Payment view returned by the API. Carries the current error details (if the
+ * payment has failed) as a convenience; the full per-transition record still lives
+ * in the payment's status history.
  */
 public record PaymentResponse(
 
         UUID id,
         BigDecimal amount,
         String currency,
-        String status
+        String sourceAccount,
+        String destinationAccount,
+        String status,
+        String description,
+        String idempotencyKey,
+        String errorCode,
+        String errorMessage,
+        LocalDateTime createdAt
 ) {
 
     public static PaymentResponse from(Payment payment) {
@@ -23,7 +31,15 @@ public record PaymentResponse(
                 payment.getId(),
                 payment.getAmount(),
                 payment.getCurrency(),
-                payment.getStatus().name()
+                payment.getSourceAccount(),
+                payment.getDestinationAccount(),
+                payment.getStatus().name(),
+                payment.getDescription(),
+                payment.getIdempotencyKey(),
+                payment.getErrorCode(),
+                payment.getErrorMessage(),
+                payment.getCreatedAt()
         );
     }
 }
+
