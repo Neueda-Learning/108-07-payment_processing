@@ -52,6 +52,18 @@ public class GlobalExceptionHandler {
                 .body(ErrorResponse.of("USERNAME_ALREADY_EXISTS", ex.getMessage()));
     }
 
+    @ExceptionHandler(DuplicateAccountException.class)
+    public ResponseEntity<ErrorResponse> handleDuplicateAccount(DuplicateAccountException ex) {
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(ErrorResponse.of("ACCOUNT_ALREADY_EXISTS", ex.getMessage()));
+    }
+
+    @ExceptionHandler(AccountValidationException.class)
+    public ResponseEntity<ErrorResponse> handleAccountValidation(AccountValidationException ex) {
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(ErrorResponse.of(ex.getErrorCode(), ex.getMessage()));
+    }
+
     @ExceptionHandler(AuthenticationException.class)
     public ResponseEntity<ErrorResponse> handleAuthentication(AuthenticationException ex) {
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
