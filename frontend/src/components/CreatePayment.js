@@ -1,5 +1,7 @@
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
+import { getBankAccounts } from '../services/localBankAccounts';
 import { localCreatePayment } from '../services/localPayments';
 
 const CURRENCIES = ['USD', 'EUR', 'INR'];
@@ -14,15 +16,24 @@ const INITIAL_FORM = {
 
 export default function CreatePayment() {
   const navigate = useNavigate();
+  const { username } = useAuth();
   const [form, setForm] = useState({ ...INITIAL_FORM });
   const [fieldErrors, setFieldErrors] = useState({});
   const [serverError, setServerError] = useState('');
   const [loading, setLoading] = useState(false);
 
+  const bankAccounts = useMemo(() => getBankAccounts(username), [username]);
+
+  useEffect(() => {
+    if (!form.sourceAccount && bankAccounts.length > 0) {
+      setForm((prev) => ({ ...prev, sourceAccount: bankAccounts[0].accountNumber }));
+    }
+  }, [bankAccounts, form.sourceAccount]);
+
   function handleChange(e) {
     const { name, value } = e.target;
-    // Account numbers accept digits only (no spaces), capped at 12 characters.
-    const nextValue = (name === 'sourceAccount' || name === 'destinationAccount')
+    // Destination account accepts digits only (no spaces), capped at 12 characters.
+    const nextValue = name === 'destinationAccount'
       ? value.replace(/\D/g, '').slice(0, 12)
       : value;
     setForm((prev) => ({ ...prev, [name]: nextValue }));
@@ -51,10 +62,8 @@ export default function CreatePayment() {
 
     if (!form.sourceAccount) {
       errors.sourceAccount = 'Source account is required.';
-    } else if (/\s/.test(form.sourceAccount)) {
-      errors.sourceAccount = 'Source account must not contain spaces.';
-    } else if (!accountPattern.test(form.sourceAccount)) {
-      errors.sourceAccount = 'Source account must be exactly 12 digits.';
+    } else if (!bankAccounts.some((a) => a.accountNumber === form.sourceAccount)) {
+      errors.sourceAccount = 'Please select a valid registered source account.';
     }
 
     if (!form.destinationAccount) {
@@ -130,18 +139,24 @@ export default function CreatePayment() {
           <div className="form-row">
             <div className="form-group">
               <label htmlFor="sourceAccount">Source Account *</label>
-              <input
+              <select
                 id="sourceAccount"
                 name="sourceAccount"
-                type="text"
-                inputMode="numeric"
-                maxLength={12}
                 className={`form-control ${fieldErrors.sourceAccount ? 'error' : ''}`}
                 value={form.sourceAccount}
                 onChange={handleChange}
-                placeholder="12-digit account number"
                 disabled={loading}
-              />
+              >
+                {bankAccounts.length === 0 ? (
+                  <option value="">No registered accounts found</option>
+                ) : (
+                  bankAccounts.map((account) => (
+                    <option key={account.accountNumber} value={account.accountNumber}>
+                      {account.accountNumber} - {account.bankName} ({account.accountType})
+                    </option>
+                  ))
+                )}
+              </select>
               {fieldErrors.sourceAccount && (
                 <div className="form-error">{fieldErrors.sourceAccount}</div>
               )}

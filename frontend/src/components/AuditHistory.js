@@ -42,18 +42,19 @@ export default function AuditHistory() {
     );
   }
 
-  const inProgress = stats ? (stats.created || 0) + (stats.validated || 0) + (stats.sent || 0) : 0;
-
   const segments = [
-    { key: 'total',      label: 'Total Payments', value: stats?.total ?? 0,     className: 'stat-total' },
-    { key: 'completed',  label: 'Completed',      value: stats?.completed ?? 0, className: 'stat-completed' },
-    { key: 'failed',     label: 'Failed',         value: stats?.failed ?? 0,    className: 'stat-failed' },
-    { key: 'progress',   label: 'In Progress',    value: inProgress,           className: 'stat-pending' },
+    { key: 'total', label: 'Total Payments', value: stats?.total ?? 0, className: 'stat-total' },
+    { key: 'completed', label: 'Completed', value: stats?.completed ?? 0, className: 'stat-completed' },
+    { key: 'failed', label: 'Failed', value: stats?.failed ?? 0, className: 'stat-failed' },
   ];
 
-  const pieTotal = segments.reduce((sum, s) => sum + s.value, 0);
+  const pieSegments = [
+    { key: 'completed', value: stats?.completed ?? 0 },
+    { key: 'failed', value: stats?.failed ?? 0 },
+  ];
+  const pieTotal = pieSegments.reduce((sum, s) => sum + s.value, 0);
   let cumulative = 0;
-  const gradientStops = segments.map((s) => {
+  const gradientStops = pieSegments.map((s) => {
     const pct = pieTotal > 0 ? (s.value / pieTotal) * 100 : 0;
     const start = cumulative;
     const end = cumulative + pct;
@@ -100,7 +101,7 @@ export default function AuditHistory() {
       {stats && (
         <div className="card">
           <div className="section-title">Status Breakdown</div>
-          <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap' }}>
+          <div className="audit-status-links">
             {STATUSES.map((s) => (
               <Link
                 key={s}
