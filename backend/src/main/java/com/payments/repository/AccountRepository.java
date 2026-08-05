@@ -8,5 +8,8 @@ import java.util.List;
 public interface AccountRepository extends JpaRepository<Account, String> {
 
     List<Account> findByUsername(String username);
+
+    /** Case-insensitive partial match, used to look up a payment *destination* by name. */
+    List<Account> findByAccountHolderNameContainingIgnoreCase(String accountHolderName);
 }
 
