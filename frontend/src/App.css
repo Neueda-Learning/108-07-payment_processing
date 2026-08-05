@@ -44,11 +44,64 @@ body {
 .main-content {
   margin-left: 240px;
   padding: 32px;
+  padding-top: 76px;
   min-height: 100vh;
 }
 
 @media (max-width: 768px) {
-  .main-content { margin-left: 0; padding: 16px; }
+  .main-content { margin-left: 0; padding: 16px; padding-top: 64px; }
+}
+
+/* ── User menu (top-right icon, hover to reveal username) ── */
+.user-menu {
+  position: fixed;
+  top: 16px;
+  right: 24px;
+  z-index: 1100;
+}
+
+.user-menu-btn {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: none;
+  background: var(--primary);
+  color: var(--white);
+  font-weight: 700;
+  font-size: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: var(--shadow-md);
+  transition: transform var(--transition);
+}
+
+.user-menu-btn:hover {
+  transform: scale(1.06);
+}
+
+.user-menu-tooltip {
+  position: absolute;
+  top: 48px;
+  right: 0;
+  background: var(--gray-900);
+  color: var(--white);
+  padding: 6px 12px;
+  border-radius: var(--radius);
+  font-size: 13px;
+  white-space: nowrap;
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(-4px);
+  transition: opacity var(--transition), transform var(--transition), visibility var(--transition);
+  pointer-events: none;
+}
+
+.user-menu:hover .user-menu-tooltip {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0);
 }
 
 /* ── Navbar ── */
@@ -191,6 +244,27 @@ body {
   margin-top: 2px;
 }
 
+/* ── Onboarding (first-time add bank account, no sidebar) ── */
+.onboarding-page {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 70vh;
+  text-align: center;
+}
+
+.onboarding-page .page-header {
+  flex-direction: column;
+  justify-content: center;
+  width: 100%;
+  max-width: 600px;
+}
+
+.onboarding-page .card {
+  text-align: left;
+}
+
 /* ── Buttons ── */
 .btn {
   display: inline-flex;
@@ -237,6 +311,21 @@ body {
 .btn:disabled {
   opacity: 0.6;
   cursor: not-allowed;
+}
+
+.icon-btn-delete {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  font-size: 15px;
+  padding: 6px 8px;
+  border-radius: var(--radius);
+  transition: background var(--transition);
+  line-height: 1;
+}
+
+.icon-btn-delete:hover {
+  background: var(--danger-light);
 }
 
 /* ── Forms ── */
@@ -453,6 +542,101 @@ body {
   flex-wrap: wrap;
   justify-content: flex-start;
   padding-left: 8px;
+}
+
+/* ── Dashboard: account balance overview ── */
+.dashboard-accounts-grid {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr;
+  gap: 24px;
+  margin-bottom: 24px;
+  align-items: stretch;
+}
+
+@media (max-width: 900px) {
+  .dashboard-accounts-grid { grid-template-columns: 1fr; }
+}
+
+.balance-chart-current {
+  font-size: 26px;
+  font-weight: 700;
+  color: var(--primary);
+  margin-bottom: 8px;
+}
+
+.balance-chart-svg {
+  width: 100%;
+  height: 220px;
+  display: block;
+}
+
+.balance-chart-area {
+  fill: rgba(26, 115, 232, 0.12);
+  stroke: none;
+}
+
+.balance-chart-line {
+  fill: none;
+  stroke: var(--primary);
+  stroke-width: 2;
+}
+
+.balance-chart-dot {
+  fill: var(--primary);
+}
+
+.balance-chart-range {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+  color: var(--gray-400);
+  margin-top: 6px;
+}
+
+.account-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-height: 280px;
+  overflow-y: auto;
+}
+
+.account-list-item {
+  padding: 12px 14px;
+  border: 1px solid var(--gray-200);
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition: background var(--transition), border-color var(--transition);
+}
+
+.account-list-item:hover {
+  background: var(--gray-50);
+}
+
+.account-list-item.active {
+  border-color: var(--primary);
+  background: var(--primary-light);
+}
+
+.account-list-item .account-number {
+  font-family: monospace;
+  font-weight: 700;
+  font-size: 14px;
+  color: var(--gray-900);
+}
+
+.account-list-item .account-holder {
+  font-size: 12px;
+  color: var(--gray-600);
+  margin-top: 2px;
+}
+
+.account-list-item .account-type-badge {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--primary);
+  margin-top: 6px;
 }
 
 /* ── Table ── */

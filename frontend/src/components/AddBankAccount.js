@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { getBankAccounts, addBankAccount } from '../services/localBankAccounts';
+import { getBankAccounts, addBankAccount, deleteBankAccount } from '../services/localBankAccounts';
 
 const ACCOUNT_TYPES = ['Savings Account', 'Salary Account', 'Current Account'];
 
@@ -19,6 +19,7 @@ export default function AddBankAccount() {
   const [fieldErrors, setFieldErrors] = useState({});
   const [accounts, setAccounts] = useState([]);
   const [successMessage, setSuccessMessage] = useState('');
+  const [accountToDelete, setAccountToDelete] = useState(null);
 
   const loadAccounts = useCallback(() => {
     setAccounts(getBankAccounts(username));
@@ -66,6 +67,8 @@ export default function AddBankAccount() {
       return;
     }
 
+    const wasFirstAccount = accounts.length === 0;
+
     addBankAccount(username, {
       accountNumber: form.accountNumber,
       accountHolderName: form.accountHolderName.trim(),
@@ -73,15 +76,29 @@ export default function AddBankAccount() {
       accountType: form.accountType,
     });
 
+    if (wasFirstAccount) {
+      // First account ever added for this user — take them straight to the dashboard.
+      navigate('/dashboard', { replace: true });
+      return;
+    }
+
     setForm({ ...INITIAL_FORM });
     setSuccessMessage('Bank account added successfully.');
+    loadAccounts();
+  }
+
+  function handleConfirmDelete() {
+    if (!accountToDelete) return;
+    deleteBankAccount(username, accountToDelete.accountNumber);
+    setAccountToDelete(null);
+    setSuccessMessage('Bank account deleted successfully.');
     loadAccounts();
   }
 
   const isFirstTime = accounts.length === 0;
 
   return (
-    <div>
+    <div className={isFirstTime ? 'onboarding-page' : ''}>
       <div className="page-header">
         <div>
           <h1>Add Bank Account</h1>
@@ -93,7 +110,7 @@ export default function AddBankAccount() {
         </div>
       </div>
 
-      <div className="card" style={{ maxWidth: '600px', marginBottom: '24px' }}>
+      <div className="card" style={{ maxWidth: '600px', width: '100%', marginBottom: '24px' }}>
         {successMessage && <div className="alert alert-success">{successMessage}</div>}
 
         <form onSubmit={handleSubmit} noValidate>
@@ -192,6 +209,7 @@ export default function AddBankAccount() {
                   <th>Account Holder</th>
                   <th>Bank Name</th>
                   <th>Account Type</th>
+                  <th></th>
                 </tr>
               </thead>
               <tbody>
@@ -201,10 +219,39 @@ export default function AddBankAccount() {
                     <td>{a.accountHolderName}</td>
                     <td>{a.bankName}</td>
                     <td>{a.accountType}</td>
+                    <td>
+                      <button
+                        type="button"
+                        className="icon-btn-delete"
+                        title="Delete account"
+                        aria-label={`Delete account ${a.accountNumber}`}
+                        onClick={() => setAccountToDelete(a)}
+                      >
+                        🗑️
+                      </button>
+                    </td>
                   </tr>
                 ))}
               </tbody>
             </table>
+          </div>
+        </div>
+      )}
+
+      {accountToDelete && (
+        <div className="modal-overlay" onClick={() => setAccountToDelete(null)}>
+          <div className="modal-box" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-icon-fail">🗑️</div>
+            <h3 className="modal-title">Delete Bank Account?</h3>
+            <p className="modal-stage">
+              Are you sure you want to delete the account{' '}
+              <strong>{accountToDelete.accountNumber}</strong> ({accountToDelete.accountHolderName})?
+              This action cannot be undone.
+            </p>
+            <div className="modal-actions">
+              <button className="btn btn-danger" onClick={handleConfirmDelete}>Yes, Delete</button>
+              <button className="btn btn-secondary" onClick={() => setAccountToDelete(null)}>Cancel</button>
+            </div>
           </div>
         </div>
       )}

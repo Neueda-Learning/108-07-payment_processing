@@ -1,6 +1,8 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { Link, useParams, useNavigate } from 'react-router-dom';
 import { localGetPaymentById, localGetPaymentHistory, localAdvanceStatus } from '../services/localPayments';
+import { useAuth } from '../context/AuthContext';
+import { getBankAccounts } from '../services/localBankAccounts';
 
 const STATUS_FLOW = ['CREATED', 'VALIDATED', 'SENT', 'COMPLETED'];
 const AUTO_ADVANCE_STATUSES = ['CREATED', 'VALIDATED', 'SENT'];
@@ -28,6 +30,7 @@ function nextStatus(current) {
 export default function PaymentDetails() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { username } = useAuth();
 
   const [payment, setPayment] = useState(null);
   const [history, setHistory] = useState([]);
@@ -135,6 +138,9 @@ export default function PaymentDetails() {
   const createdEntry = history.find((h) => h.status === 'CREATED');
   const lastEntry = history.length ? history[history.length - 1] : null;
   const failureEntry = history.slice().reverse().find((h) => h.status === 'FAILED');
+  const sourceAccountInfo = getBankAccounts(username).find(
+    (a) => a.accountNumber === payment.sourceAccount
+  );
 
   return (
     <div>
@@ -194,6 +200,11 @@ export default function PaymentDetails() {
           <div className="detail-item">
             <label>Source Account</label>
             <span className="mono">{payment.sourceAccount || '—'}</span>
+            {sourceAccountInfo && (
+              <span style={{ display: 'block', fontSize: '12px', color: 'var(--gray-600)', marginTop: '4px', fontWeight: 400 }}>
+                {sourceAccountInfo.accountHolderName} ({sourceAccountInfo.bankName})
+              </span>
+            )}
           </div>
           <div className="detail-item">
             <label>Destination Account</label>

@@ -1,10 +1,11 @@
 import React, { useState, useCallback } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { hasBankAccount } from './services/localBankAccounts';
 import Login from './components/Login';
 import Signup from './components/Signup';
 import Navbar from './components/Navbar';
+import UserMenu from './components/UserMenu';
 import Dashboard from './components/Dashboard';
 import AuditHistory from './components/AuditHistory';
 import AddBankAccount from './components/AddBankAccount';
@@ -25,7 +26,6 @@ function RequireBankAccount({ children }) {
 }
 
 function AppRoutes() {
-  const { token } = useAuth();
   const [sidebarWidth, setSidebarWidth] = useState(() =>
     parseInt(localStorage.getItem('pps_sidebar_width') || '360', 10)
   );
@@ -37,8 +37,27 @@ function AppRoutes() {
 
   return (
     <Router>
-      {token && <Navbar width={sidebarWidth} onWidthChange={handleWidthChange} />}
-      <div className={token ? 'main-content' : ''} style={token ? { marginLeft: sidebarWidth } : {}}>
+      <AppShell sidebarWidth={sidebarWidth} onWidthChange={handleWidthChange} />
+    </Router>
+  );
+}
+
+// Rendered inside <Router> so it can react to route changes (e.g. sidebar
+// should reappear immediately once the user's first bank account is added).
+function AppShell({ sidebarWidth, onWidthChange }) {
+  const { token, username } = useAuth();
+  useLocation(); // subscribe to navigation so this re-renders on route change
+
+  const showSidebar = !!(token && username && hasBankAccount(username));
+
+  return (
+    <>
+      {token && <UserMenu />}
+      {showSidebar && <Navbar width={sidebarWidth} onWidthChange={onWidthChange} />}
+      <div
+        className={token ? 'main-content' : ''}
+        style={showSidebar ? { marginLeft: sidebarWidth } : token ? { marginLeft: 0 } : {}}
+      >
         <Routes>
           <Route
             path="/login"
@@ -109,7 +128,7 @@ function AppRoutes() {
           <Route path="*" element={<Navigate to={token ? '/dashboard' : '/signup'} replace />} />
         </Routes>
       </div>
-    </Router>
+    </>
   );
 }
 

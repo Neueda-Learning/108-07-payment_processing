@@ -1,10 +1,52 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { localGetAllPayments } from '../services/localPayments';
+import { useAuth } from '../context/AuthContext';
+import { getBankAccounts } from '../services/localBankAccounts';
+
+function BalanceChart({ history }) {
+  if (!history || history.length === 0) {
+    return (
+      <div className="empty-state" style={{ padding: '30px' }}>
+        <p>No balance history available for this account.</p>
+      </div>
+    );
+  }
+
+  const width = 560;
+  const height = 220;
+  const padding = 28;
+  const values = history.map((h) => h.balance);
+  const min = Math.min(...values);
+  const max = Math.max(...values);
+  const range = max - min || 1;
+  const lastIndex = history.length - 1 || 1;
+
+  const coords = history.map((h, i) => ({
+    x: padding + (i / lastIndex) * (width - padding * 2),
+    y: height - padding - ((h.balance - min) / range) * (height - padding * 2),
+  }));
+
+  const linePoints = coords.map((c) => `${c.x},${c.y}`).join(' ');
+  const areaPoints = `${padding},${height - padding} ${linePoints} ${width - padding},${height - padding}`;
+
+  return (
+    <svg viewBox={`0 0 ${width} ${height}`} className="balance-chart-svg" preserveAspectRatio="none">
+      <polygon points={areaPoints} className="balance-chart-area" />
+      <polyline points={linePoints} className="balance-chart-line" />
+      {coords.map((c, i) => (
+        <circle key={i} cx={c.x} cy={c.y} r="3" className="balance-chart-dot" />
+      ))}
+    </svg>
+  );
+}
 
 export default function Dashboard() {
   const navigate = useNavigate();
+  const { username } = useAuth();
   const [recent, setRecent] = useState([]);
+  const [accounts, setAccounts] = useState([]);
+  const [selectedIndex, setSelectedIndex] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -14,12 +56,13 @@ export default function Dashboard() {
     try {
       const payments = await localGetAllPayments();
       setRecent(payments.slice(0, 8));
+      setAccounts(getBankAccounts(username));
     } catch (err) {
       setError('Failed to load dashboard data.');
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [username]);
 
   useEffect(() => { loadData(); }, [loadData]);
 
@@ -31,6 +74,8 @@ export default function Dashboard() {
       </div>
     );
   }
+
+  const selectedAccount = accounts[selectedIndex] || null;
 
   return (
     <div>
@@ -46,6 +91,50 @@ export default function Dashboard() {
       </div>
 
       {error && <div className="alert alert-error">{error}</div>}
+
+      {/* Account balance overview */}
+      <div className="dashboard-accounts-grid">
+        <div className="card">
+          <div className="section-title">
+            {selectedAccount ? `Balance — ${selectedAccount.accountNumber}` : 'Account Balance'}
+          </div>
+          {selectedAccount && (
+            <div className="balance-chart-current">
+              {selectedAccount.currentBalance?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) ?? '—'}
+            </div>
+          )}
+          <BalanceChart history={selectedAccount?.balanceHistory} />
+          {selectedAccount?.balanceHistory?.length > 0 && (
+            <div className="balance-chart-range">
+              <span>{selectedAccount.balanceHistory[0].date}</span>
+              <span>{selectedAccount.balanceHistory[selectedAccount.balanceHistory.length - 1].date}</span>
+            </div>
+          )}
+        </div>
+
+        <div className="card">
+          <div className="section-title">Your Accounts</div>
+          {accounts.length === 0 ? (
+            <div className="empty-state" style={{ padding: '30px' }}>
+              <p>No bank accounts added yet.</p>
+            </div>
+          ) : (
+            <div className="account-list">
+              {accounts.map((a, idx) => (
+                <div
+                  key={a.accountNumber + idx}
+                  className={`account-list-item ${idx === selectedIndex ? 'active' : ''}`}
+                  onClick={() => setSelectedIndex(idx)}
+                >
+                  <div className="account-number">{a.accountNumber}</div>
+                  <div className="account-holder">{a.accountHolderName}</div>
+                  <span className="account-type-badge">{a.accountType}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
 
       {/* Recent payments */}
       <div className="card">
