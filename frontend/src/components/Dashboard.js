@@ -15,37 +15,40 @@ function buildBalanceTimeline(account, payments) {
     .filter((p) => !!getPaymentTimestamp(p))
     .sort((a, b) => new Date(getPaymentTimestamp(a)) - new Date(getPaymentTimestamp(b)));
 
-  let runningBalance = Number(account.balance || 0);
-  const pointsDescending = [];
-
-  for (const p of completed.slice().sort((a, b) => new Date(getPaymentTimestamp(b)) - new Date(getPaymentTimestamp(a)))) {
-    const amount = Number(p.amount || 0);
-    const isSource = p.sourceAccount === account.accountNumber;
-    const isDestination = p.destinationAccount === account.accountNumber;
-    const delta = (isDestination ? amount : 0) - (isSource ? amount : 0);
-
-    pointsDescending.push({
-      timestamp: getPaymentTimestamp(p),
-      balance: runningBalance,
-      paymentId: p.id,
-      amount,
-      direction: isSource ? 'OUT' : 'IN',
-    });
-
-    runningBalance -= delta;
-  }
-
-  if (pointsDescending.length === 0) {
+  if (completed.length === 0) {
     return [{
       timestamp: new Date().toISOString(),
-      balance: Number(account.balance || 0),
+      credit: 0,
+      debit: 0,
       paymentId: null,
       amount: 0,
       direction: 'NONE',
     }];
   }
 
-  return pointsDescending.reverse();
+  let runningCredit = 0;
+  let runningDebit = 0;
+  const points = [];
+
+  for (const p of completed) {
+    const amount = Number(p.amount || 0);
+    const isSource = p.sourceAccount === account.accountNumber;
+    const isDestination = p.destinationAccount === account.accountNumber;
+
+    if (isDestination) runningCredit += amount;
+    if (isSource) runningDebit += amount;
+
+    points.push({
+      timestamp: getPaymentTimestamp(p),
+      credit: runningCredit,
+      debit: runningDebit,
+      paymentId: p.id,
+      amount,
+      direction: isSource ? 'OUT' : 'IN',
+    });
+  }
+
+  return points;
 }
 
 function BalanceChart({ points }) {
@@ -58,17 +61,17 @@ function BalanceChart({ points }) {
   const innerWidth = width - padLeft - padRight;
   const innerHeight = height - padTop - padBottom;
 
-  const balances = points.map((p) => p.balance);
-  let minBalance = Math.min(...balances);
-  let maxBalance = Math.max(...balances);
+  const values = points.flatMap((p) => [p.credit, p.debit]);
+  let minValue = Math.min(0, ...values);
+  let maxValue = Math.max(...values);
 
-  if (minBalance === maxBalance) {
-    minBalance -= 1;
-    maxBalance += 1;
+  if (minValue === maxValue) {
+    minValue -= 1;
+    maxValue += 1;
   }
 
   const yAt = (value) => {
-    const ratio = (value - minBalance) / (maxBalance - minBalance);
+    const ratio = (value - minValue) / (maxValue - minValue);
     return padTop + (1 - ratio) * innerHeight;
   };
 
@@ -77,14 +80,18 @@ function BalanceChart({ points }) {
     return padLeft + (idx / (points.length - 1)) * innerWidth;
   };
 
-  const pathD = points
-    .map((p, idx) => `${idx === 0 ? 'M' : 'L'} ${xAt(idx)} ${yAt(p.balance)}`)
+  const creditPathD = points
+    .map((p, idx) => `${idx === 0 ? 'M' : 'L'} ${xAt(idx)} ${yAt(p.credit)}`)
+    .join(' ');
+
+  const debitPathD = points
+    .map((p, idx) => `${idx === 0 ? 'M' : 'L'} ${xAt(idx)} ${yAt(p.debit)}`)
     .join(' ');
 
   const yTicks = 4;
   const yValues = Array.from({ length: yTicks + 1 }, (_, i) => {
     const r = i / yTicks;
-    return maxBalance - r * (maxBalance - minBalance);
+    return maxValue - r * (maxValue - minValue);
   });
 
   const xLabelIndexes = points.length <= 5
@@ -92,45 +99,65 @@ function BalanceChart({ points }) {
     : [0, Math.floor((points.length - 1) * 0.25), Math.floor((points.length - 1) * 0.5), Math.floor((points.length - 1) * 0.75), points.length - 1];
 
   return (
-    <svg className="balance-chart" viewBox={`0 0 ${width} ${height}`} role="img" aria-label="Balance over time chart">
-      <line x1={padLeft} y1={padTop} x2={padLeft} y2={padTop + innerHeight} className="balance-axis" />
-      <line x1={padLeft} y1={padTop + innerHeight} x2={padLeft + innerWidth} y2={padTop + innerHeight} className="balance-axis" />
+    <div>
+      <div className="balance-chart-legend">
+        <span className="balance-legend-item">
+          <span className="balance-legend-swatch balance-legend-credit" /> Credit
+        </span>
+        <span className="balance-legend-item">
+          <span className="balance-legend-swatch balance-legend-debit" /> Debit
+        </span>
+      </div>
+      <svg className="balance-chart" viewBox={`0 0 ${width} ${height}`} role="img" aria-label="Credit and debit over time chart">
+        <line x1={padLeft} y1={padTop} x2={padLeft} y2={padTop + innerHeight} className="balance-axis" />
+        <line x1={padLeft} y1={padTop + innerHeight} x2={padLeft + innerWidth} y2={padTop + innerHeight} className="balance-axis" />
 
-      {yValues.map((value) => (
-        <g key={value}>
-          <line
-            x1={padLeft}
-            y1={yAt(value)}
-            x2={padLeft + innerWidth}
-            y2={yAt(value)}
-            className="balance-grid-line"
-          />
-          <text x={padLeft - 8} y={yAt(value) + 4} className="balance-tick-label balance-tick-left">
-            {Number(value).toFixed(2)}
-          </text>
-        </g>
-      ))}
+        {yValues.map((value) => (
+          <g key={value}>
+            <line
+              x1={padLeft}
+              y1={yAt(value)}
+              x2={padLeft + innerWidth}
+              y2={yAt(value)}
+              className="balance-grid-line"
+            />
+            <text x={padLeft - 8} y={yAt(value) + 4} className="balance-tick-label balance-tick-left">
+              {Number(value).toFixed(2)}
+            </text>
+          </g>
+        ))}
 
-      <path d={pathD} className="balance-line" />
+        <path d={creditPathD} className="balance-line-credit" />
+        <path d={debitPathD} className="balance-line-debit" />
 
-      {points.map((point, idx) => (
-        <g key={`${point.timestamp}-${idx}`}>
-          <circle cx={xAt(idx)} cy={yAt(point.balance)} r="3.5" className="balance-point" />
-          <title>
-            {`${new Date(point.timestamp).toLocaleString()} | Balance: ${Number(point.balance).toFixed(2)}`}
-          </title>
-        </g>
-      ))}
+        {points.map((point, idx) => (
+          <g key={`credit-${point.timestamp}-${idx}`}>
+            <circle cx={xAt(idx)} cy={yAt(point.credit)} r="3.5" className="balance-point-credit" />
+            <title>
+              {`${new Date(point.timestamp).toLocaleString()} | Credit: ${Number(point.credit).toFixed(2)}`}
+            </title>
+          </g>
+        ))}
 
-      {xLabelIndexes.map((idx) => {
-        const point = points[idx];
-        return (
-          <text key={`x-${idx}`} x={xAt(idx)} y={height - 16} className="balance-tick-label balance-tick-center">
-            {new Date(point.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-          </text>
-        );
-      })}
-    </svg>
+        {points.map((point, idx) => (
+          <g key={`debit-${point.timestamp}-${idx}`}>
+            <circle cx={xAt(idx)} cy={yAt(point.debit)} r="3.5" className="balance-point-debit" />
+            <title>
+              {`${new Date(point.timestamp).toLocaleString()} | Debit: ${Number(point.debit).toFixed(2)}`}
+            </title>
+          </g>
+        ))}
+
+        {xLabelIndexes.map((idx) => {
+          const point = points[idx];
+          return (
+            <text key={`x-${idx}`} x={xAt(idx)} y={height - 16} className="balance-tick-label balance-tick-center">
+              {new Date(point.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+            </text>
+          );
+        })}
+      </svg>
+    </div>
   );
 }
 
@@ -217,7 +244,7 @@ export default function Dashboard() {
             {selectedAccountData ? (
               <>
                 <p className="dashboard-balance-caption">
-                  X-axis: timestamp, Y-axis: available balance for account{' '}
+                  X-axis: timestamp, Y-axis: cumulative credit/debit for account{' '}
                   <span className="mono">{selectedAccountData.accountNumber}</span>
                 </p>
                 <BalanceChart points={balanceTimeline} />

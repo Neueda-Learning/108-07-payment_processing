@@ -458,14 +458,53 @@ body {
   stroke-width: 1;
 }
 
-.balance-line {
+.balance-line-credit {
   fill: none;
-  stroke: var(--primary);
+  stroke: var(--success);
   stroke-width: 2.5;
 }
 
-.balance-point {
-  fill: var(--primary);
+.balance-line-debit {
+  fill: none;
+  stroke: var(--danger);
+  stroke-width: 2.5;
+}
+
+.balance-point-credit {
+  fill: var(--success);
+}
+
+.balance-point-debit {
+  fill: var(--danger);
+}
+
+.balance-chart-legend {
+  display: flex;
+  gap: 18px;
+  margin-bottom: 10px;
+}
+
+.balance-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12.5px;
+  color: var(--gray-600);
+}
+
+.balance-legend-swatch {
+  display: inline-block;
+  width: 14px;
+  height: 3px;
+  border-radius: 2px;
+}
+
+.balance-legend-credit {
+  background: var(--success);
+}
+
+.balance-legend-debit {
+  background: var(--danger);
 }
 
 .balance-tick-label {
