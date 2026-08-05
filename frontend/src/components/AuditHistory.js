@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { Link } from 'react-router-dom';
-import { localGetStats } from '../services/localPayments';
+import { paymentsApi } from '../services/api';
 
 const STATUSES = ['CREATED', 'VALIDATED', 'SENT', 'COMPLETED', 'FAILED'];
 
@@ -22,8 +22,8 @@ export default function AuditHistory() {
     setLoading(true);
     setError('');
     try {
-      const statsData = await localGetStats();
-      setStats(statsData);
+      const response = await paymentsApi.getStats();
+      setStats(response.data);
     } catch (err) {
       setError('Failed to load audit history.');
     } finally {

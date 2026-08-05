@@ -1,8 +1,6 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
-import { getBankAccounts } from '../services/localBankAccounts';
-import { localCreatePayment } from '../services/localPayments';
+import React, { useEffect, useState } from 'react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { accountsApi, paymentsApi } from '../services/api';
 
 const CURRENCIES = ['USD', 'EUR', 'INR'];
 
@@ -14,21 +12,49 @@ const INITIAL_FORM = {
   description: '',
 };
 
+/**
+ * A fresh key per mount/attempt. Retrying a payment (see the "Retry Payment" button
+ * on a FAILED payment's details page) lands back on this component, remounting it
+ * and thus generating a brand-new key — so the retry is a genuinely new payment
+ * attempt, not a resend of the failed one. The backend's uk_payments_idempotency_key
+ * constraint means a COMPLETED payment's key can never be reused to create a second
+ * payment, even if this were somehow bypassed client-side.
+ */
+function generateIdempotencyKey() {
+  return crypto.randomUUID();
+}
+
 export default function CreatePayment() {
   const navigate = useNavigate();
-  const { username } = useAuth();
-  const [form, setForm] = useState({ ...INITIAL_FORM });
+  const location = useLocation();
+  const retryPayload = location.state?.retryPayload;
+
+  const [form, setForm] = useState(() => ({ ...INITIAL_FORM, ...retryPayload }));
   const [fieldErrors, setFieldErrors] = useState({});
   const [serverError, setServerError] = useState('');
   const [loading, setLoading] = useState(false);
-
-  const bankAccounts = useMemo(() => getBankAccounts(username), [username]);
+  const [bankAccounts, setBankAccounts] = useState([]);
+  const [accountsLoading, setAccountsLoading] = useState(true);
+  const [idempotencyKey, setIdempotencyKey] = useState(generateIdempotencyKey);
 
   useEffect(() => {
-    if (!form.sourceAccount && bankAccounts.length > 0) {
-      setForm((prev) => ({ ...prev, sourceAccount: bankAccounts[0].accountNumber }));
-    }
-  }, [bankAccounts, form.sourceAccount]);
+    let cancelled = false;
+    accountsApi.getAll()
+      .then((response) => {
+        if (cancelled) return;
+        setBankAccounts(response.data);
+        if (response.data.length > 0) {
+          setForm((prev) => ({ ...prev, sourceAccount: prev.sourceAccount || response.data[0].accountNumber }));
+        }
+      })
+      .catch((err) => {
+        if (!cancelled) setServerError(err.message || 'Failed to load bank accounts.');
+      })
+      .finally(() => {
+        if (!cancelled) setAccountsLoading(false);
+      });
+    return () => { cancelled = true; };
+  }, []);
 
   function handleChange(e) {
     const { name, value } = e.target;
@@ -92,6 +118,12 @@ export default function CreatePayment() {
     }
 
     setServerError('');
+    // Disabled for the whole request so a double-click (or a slow network causing an
+    // impatient re-click) can never fire this exact submission twice. If the request
+    // itself fails (validation, insufficient funds, etc.) the button re-enables and
+    // the same idempotencyKey is reused — no payment was created, so that is safe.
+    // A brand-new key is only ever minted by remounting this component (see
+    // generateIdempotencyKey above), which happens on a genuinely new attempt.
     setLoading(true);
     try {
       const payload = {
@@ -100,9 +132,10 @@ export default function CreatePayment() {
         sourceAccount: form.sourceAccount,
         destinationAccount: form.destinationAccount,
         description: form.description.trim(),
+        idempotencyKey,
       };
-      const payment = await localCreatePayment(payload);
-      navigate(`/payments/${payment.id}`);
+      const response = await paymentsApi.create(payload);
+      navigate(`/payments/${response.data.id}`);
     } catch (err) {
       setServerError(err.message || 'Failed to create payment. Please try again.');
     } finally {
@@ -114,6 +147,7 @@ export default function CreatePayment() {
     setForm({ ...INITIAL_FORM });
     setFieldErrors({});
     setServerError('');
+    setIdempotencyKey(generateIdempotencyKey());
   }
 
   return (
@@ -145,9 +179,11 @@ export default function CreatePayment() {
                 className={`form-control ${fieldErrors.sourceAccount ? 'error' : ''}`}
                 value={form.sourceAccount}
                 onChange={handleChange}
-                disabled={loading}
+                disabled={loading || accountsLoading}
               >
-                {bankAccounts.length === 0 ? (
+                {accountsLoading ? (
+                  <option value="">Loading accounts…</option>
+                ) : bankAccounts.length === 0 ? (
                   <option value="">No registered accounts found</option>
                 ) : (
                   bankAccounts.map((account) => (

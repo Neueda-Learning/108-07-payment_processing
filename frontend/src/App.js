@@ -1,7 +1,7 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
-import { hasBankAccount } from './services/localBankAccounts';
+import { accountsApi } from './services/api';
 import Login from './components/Login';
 import Signup from './components/Signup';
 import Navbar from './components/Navbar';
@@ -20,8 +20,30 @@ function ProtectedRoute({ children }) {
 
 // Blocks dashboard/payment pages until the user has added at least one bank account.
 function RequireBankAccount({ children }) {
-  const { username } = useAuth();
-  return hasBankAccount(username) ? children : <Navigate to="/add-bank-account" replace />;
+  const [status, setStatus] = useState('loading'); // 'loading' | 'has-account' | 'no-account'
+
+  useEffect(() => {
+    let cancelled = false;
+    accountsApi.getAll()
+      .then((response) => {
+        if (!cancelled) setStatus(response.data.length > 0 ? 'has-account' : 'no-account');
+      })
+      .catch(() => {
+        if (!cancelled) setStatus('no-account');
+      });
+    return () => { cancelled = true; };
+  }, []);
+
+  if (status === 'loading') {
+    return (
+      <div className="loading-wrapper">
+        <div className="spinner" />
+        <span>Loading…</span>
+      </div>
+    );
+  }
+
+  return status === 'has-account' ? children : <Navigate to="/add-bank-account" replace />;
 }
 
 function AppRoutes() {

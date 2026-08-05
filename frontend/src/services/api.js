@@ -53,6 +53,10 @@ export const paymentsApi = {
     api.post('/payments', {
       amount: payload.amount,
       currency: payload.currency,
+      sourceAccount: payload.sourceAccount,
+      destinationAccount: payload.destinationAccount,
+      description: payload.description,
+      idempotencyKey: payload.idempotencyKey,
     }),
 
   getHistory: (id) => api.get(`/payments/${id}/history`),
@@ -63,6 +67,20 @@ export const paymentsApi = {
     api.post(`/payments/${id}/fail`, errorCode ? { errorCode } : {}),
 
   getStats: () => api.get('/payments/stats'),
+};
+
+// ── Accounts ──
+export const accountsApi = {
+  getAll: () => api.get('/accounts'),
+
+  create: (payload) =>
+    api.post('/accounts', {
+      accountNumber: payload.accountNumber,
+      currency: payload.currency,
+      accountHolderName: payload.accountHolderName,
+      bankName: payload.bankName,
+      accountType: payload.accountType,
+    }),
 };
 
 export default api;

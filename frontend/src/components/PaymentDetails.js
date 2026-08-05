@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { Link, useParams, useNavigate } from 'react-router-dom';
-import { localGetPaymentById, localGetPaymentHistory, localAdvanceStatus } from '../services/localPayments';
+import { paymentsApi } from '../services/api';
 
 const STATUS_FLOW = ['CREATED', 'VALIDATED', 'SENT', 'COMPLETED'];
 const AUTO_ADVANCE_STATUSES = ['CREATED', 'VALIDATED', 'SENT'];
@@ -46,10 +46,12 @@ export default function PaymentDetails() {
     setLoading(true);
     setError('');
     try {
-      const paymentData = await localGetPaymentById(id);
-      const historyData = await localGetPaymentHistory(id);
-      setPayment(paymentData);
-      setHistory(historyData);
+      const [paymentResponse, historyResponse] = await Promise.all([
+        paymentsApi.getById(id),
+        paymentsApi.getHistory(id),
+      ]);
+      setPayment(paymentResponse.data);
+      setHistory(historyResponse.data);
     } catch (err) {
       setError(err.code === 'PAYMENT_NOT_FOUND' ? 'Payment not found.' : 'Failed to load payment details.');
     } finally {
@@ -85,15 +87,26 @@ export default function PaymentDetails() {
       setAutoCountdown(0);
       const currentStatus = payment.status;
       try {
-        await localAdvanceStatus(id);
+        await paymentsApi.advanceStatus(id);
         await loadPayment();
       } catch (err) {
         setAutoProcessing(false);
-        setFailureDetails({
-          stage: currentStatus,
-          message: err.message || `Processing failed at stage: ${currentStatus}`,
-          errorCode: err.code || 'PROCESSING_ERROR',
-        });
+        const errorCode = err.code || 'PROCESSING_ERROR';
+        const message = err.message || `Processing failed at stage: ${currentStatus}`;
+
+        // Advancing only throws when a real business rule fails (e.g. insufficient
+        // funds) — the payment itself is left in its current status, so it must be
+        // explicitly marked FAILED to persist that outcome and record it on the
+        // audit trail, mirroring what a real payment processor would do.
+        try {
+          await paymentsApi.failPayment(id, errorCode);
+        } catch {
+          // Best-effort: if this also fails (e.g. it had already finished), the
+          // failure modal below still tells the user what went wrong.
+        }
+        await loadPayment();
+
+        setFailureDetails({ stage: currentStatus, message, errorCode });
         setShowFailureModal(true);
       }
     }, AUTO_ADVANCE_DELAY_MS);
@@ -136,6 +149,20 @@ export default function PaymentDetails() {
   const lastEntry = history.length ? history[history.length - 1] : null;
   const failureEntry = history.slice().reverse().find((h) => h.status === 'FAILED');
 
+  function handleRetry() {
+    navigate('/payments/new', {
+      state: {
+        retryPayload: {
+          amount: String(payment.amount),
+          currency: payment.currency,
+          sourceAccount: payment.sourceAccount,
+          destinationAccount: payment.destinationAccount,
+          description: payment.description || '',
+        },
+      },
+    });
+  }
+
   return (
     <div>
       {/* Breadcrumb */}
@@ -154,6 +181,11 @@ export default function PaymentDetails() {
           </h1>
           <p style={{ fontFamily: 'monospace', fontSize: '12px', color: '#9aa0a6' }}>{payment.id}</p>
         </div>
+        {payment.status === 'FAILED' && (
+          <button className="btn btn-primary" onClick={handleRetry}>
+            🔁 Retry Payment
+          </button>
+        )}
       </div>
 
       {/* Auto-processing banner */}

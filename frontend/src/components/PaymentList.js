@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
-import { localGetAllPayments } from '../services/localPayments';
+import { paymentsApi } from '../services/api';
 
 const STATUSES = ['ALL', 'COMPLETED', 'FAILED'];
 
@@ -21,8 +21,11 @@ export default function PaymentList() {
     setLoading(true);
     setError('');
     try {
-      const results = await localGetAllPayments(status !== 'ALL' ? status : undefined);
-      setPayments(results);
+      const response = await paymentsApi.getAll(status !== 'ALL' ? status : undefined);
+      const sorted = response.data
+        .slice()
+        .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+      setPayments(sorted);
     } catch (err) {
       setError('Failed to load payments.');
     } finally {
@@ -89,7 +92,7 @@ export default function PaymentList() {
           placeholder="Search by Payment ID"
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
-          maxLength={12}
+          maxLength={36}
         />
       </div>
 

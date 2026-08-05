@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { localGetAllPayments } from '../services/localPayments';
+import { paymentsApi } from '../services/api';
 
 export default function Dashboard() {
   const navigate = useNavigate();
@@ -12,8 +12,11 @@ export default function Dashboard() {
     setLoading(true);
     setError('');
     try {
-      const payments = await localGetAllPayments();
-      setRecent(payments.slice(0, 8));
+      const response = await paymentsApi.getAll();
+      const sorted = response.data
+        .slice()
+        .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+      setRecent(sorted.slice(0, 8));
     } catch (err) {
       setError('Failed to load dashboard data.');
     } finally {
