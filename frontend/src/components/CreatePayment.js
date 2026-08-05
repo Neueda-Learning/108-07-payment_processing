@@ -7,6 +7,9 @@ const CURRENCIES = ['USD', 'EUR', 'INR'];
 const INITIAL_FORM = {
   amount: '',
   currency: 'USD',
+  sourceAccount: '',
+  destinationAccount: '',
+  description: '',
 };
 
 export default function CreatePayment() {
@@ -18,7 +21,11 @@ export default function CreatePayment() {
 
   function handleChange(e) {
     const { name, value } = e.target;
-    setForm((prev) => ({ ...prev, [name]: value }));
+    // Account numbers accept digits only (no spaces), capped at 12 characters.
+    const nextValue = (name === 'sourceAccount' || name === 'destinationAccount')
+      ? value.replace(/\D/g, '').slice(0, 12)
+      : value;
+    setForm((prev) => ({ ...prev, [name]: nextValue }));
     setFieldErrors((prev) => ({ ...prev, [name]: '' }));
     setServerError('');
   }
@@ -40,6 +47,30 @@ export default function CreatePayment() {
     if (!form.currency)
       errors.currency = 'Currency is required.';
 
+    const accountPattern = /^\d{12}$/;
+
+    if (!form.sourceAccount) {
+      errors.sourceAccount = 'Source account is required.';
+    } else if (/\s/.test(form.sourceAccount)) {
+      errors.sourceAccount = 'Source account must not contain spaces.';
+    } else if (!accountPattern.test(form.sourceAccount)) {
+      errors.sourceAccount = 'Source account must be exactly 12 digits.';
+    }
+
+    if (!form.destinationAccount) {
+      errors.destinationAccount = 'Destination account is required.';
+    } else if (/\s/.test(form.destinationAccount)) {
+      errors.destinationAccount = 'Destination account must not contain spaces.';
+    } else if (!accountPattern.test(form.destinationAccount)) {
+      errors.destinationAccount = 'Destination account must be exactly 12 digits.';
+    } else if (form.sourceAccount && form.destinationAccount === form.sourceAccount) {
+      errors.destinationAccount = 'Destination account must be different from source account.';
+    }
+
+    if (form.description && form.description.length > 255) {
+      errors.description = 'Description must not exceed 255 characters.';
+    }
+
     return errors;
   }
 
@@ -57,6 +88,9 @@ export default function CreatePayment() {
       const payload = {
         amount: parseFloat(form.amount),
         currency: form.currency,
+        sourceAccount: form.sourceAccount,
+        destinationAccount: form.destinationAccount,
+        description: form.description.trim(),
       };
       const payment = await localCreatePayment(payload);
       navigate(`/payments/${payment.id}`);
@@ -92,6 +126,47 @@ export default function CreatePayment() {
         {serverError && <div className="alert alert-error">{serverError}</div>}
 
         <form onSubmit={handleSubmit} noValidate>
+          {/* Source & Destination accounts */}
+          <div className="form-row">
+            <div className="form-group">
+              <label htmlFor="sourceAccount">Source Account *</label>
+              <input
+                id="sourceAccount"
+                name="sourceAccount"
+                type="text"
+                inputMode="numeric"
+                maxLength={12}
+                className={`form-control ${fieldErrors.sourceAccount ? 'error' : ''}`}
+                value={form.sourceAccount}
+                onChange={handleChange}
+                placeholder="12-digit account number"
+                disabled={loading}
+              />
+              {fieldErrors.sourceAccount && (
+                <div className="form-error">{fieldErrors.sourceAccount}</div>
+              )}
+            </div>
+
+            <div className="form-group">
+              <label htmlFor="destinationAccount">Destination Account *</label>
+              <input
+                id="destinationAccount"
+                name="destinationAccount"
+                type="text"
+                inputMode="numeric"
+                maxLength={12}
+                className={`form-control ${fieldErrors.destinationAccount ? 'error' : ''}`}
+                value={form.destinationAccount}
+                onChange={handleChange}
+                placeholder="12-digit account number"
+                disabled={loading}
+              />
+              {fieldErrors.destinationAccount && (
+                <div className="form-error">{fieldErrors.destinationAccount}</div>
+              )}
+            </div>
+          </div>
+
           {/* Amount & Currency */}
           <div className="form-row">
             <div className="form-group">
@@ -132,6 +207,25 @@ export default function CreatePayment() {
                 <div className="form-error">{fieldErrors.currency}</div>
               )}
             </div>
+          </div>
+
+          {/* Description */}
+          <div className="form-group">
+            <label htmlFor="description">Description</label>
+            <input
+              id="description"
+              name="description"
+              type="text"
+              maxLength={255}
+              className={`form-control ${fieldErrors.description ? 'error' : ''}`}
+              value={form.description}
+              onChange={handleChange}
+              placeholder="What is this payment for? (optional)"
+              disabled={loading}
+            />
+            {fieldErrors.description && (
+              <div className="form-error">{fieldErrors.description}</div>
+            )}
           </div>
 
           {/* Actions */}

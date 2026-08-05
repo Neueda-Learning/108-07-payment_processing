@@ -2,6 +2,13 @@ import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { localRegister } from '../services/localAuth';
 
+const PASSWORD_RULES = [
+  { key: 'lowercase', label: 'One lowercase letter', test: (pw) => /[a-z]/.test(pw) },
+  { key: 'uppercase', label: 'One capital letter', test: (pw) => /[A-Z]/.test(pw) },
+  { key: 'number', label: 'One number', test: (pw) => /\d/.test(pw) },
+  { key: 'special', label: 'One special character', test: (pw) => /[^A-Za-z0-9\s]/.test(pw) },
+];
+
 export default function Signup() {
   const navigate = useNavigate();
 
@@ -31,9 +38,9 @@ export default function Signup() {
 
     if (!form.password) {
       errors.password = 'Password is required.';
-    } else if (!/^(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9])\S{8,12}$/.test(form.password)) {
+    } else if (!/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9])\S{8,12}$/.test(form.password)) {
       errors.password =
-        'Password must be 8-12 characters with at least 1 capital letter, 1 number, and 1 special character (no spaces).';
+        'Password must be 8-12 characters with at least 1 lowercase letter, 1 capital letter, 1 number, and 1 special character (no spaces).';
     }
 
     if (!form.confirmPassword) {
@@ -110,11 +117,19 @@ export default function Signup() {
               onChange={handleChange}
               autoComplete="new-password"
               disabled={loading}
-              placeholder="8-12 chars, 1 capital, 1 number, 1 special"
+              placeholder="Create your password"
             />
-            <div className="form-hint">
-              Password recommendation: 8-12 characters, at least 1 capital letter, 1 special character, and 1 number.
-            </div>
+            <ul className="password-checklist">
+              {PASSWORD_RULES.map((rule) => {
+                const met = rule.test(form.password);
+                return (
+                  <li key={rule.key} className={met ? 'met' : ''}>
+                    <span className="check-icon">{met ? '✓' : '○'}</span>
+                    {rule.label}
+                  </li>
+                );
+              })}
+            </ul>
             {fieldErrors.password && (
               <div className="form-error">{fieldErrors.password}</div>
             )}

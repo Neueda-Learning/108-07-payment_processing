@@ -192,8 +192,20 @@ export default function PaymentDetails() {
             <span>{payment.currency}</span>
           </div>
           <div className="detail-item">
+            <label>Source Account</label>
+            <span className="mono">{payment.sourceAccount || '—'}</span>
+          </div>
+          <div className="detail-item">
+            <label>Destination Account</label>
+            <span className="mono">{payment.destinationAccount || '—'}</span>
+          </div>
+          <div className="detail-item">
+            <label>Description</label>
+            <span>{payment.description || '—'}</span>
+          </div>
+          <div className="detail-item">
             <label>Created At</label>
-            <span>{createdEntry?.timestamp ? new Date(createdEntry.timestamp).toLocaleString() : '—'}</span>
+            <span>{payment.createdAt ? new Date(payment.createdAt).toLocaleString() : (createdEntry?.timestamp ? new Date(createdEntry.timestamp).toLocaleString() : '—')}</span>
           </div>
           <div className="detail-item">
             <label>Last Updated</label>

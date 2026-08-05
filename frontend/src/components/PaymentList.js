@@ -52,7 +52,7 @@ export default function PaymentList() {
 
   const hasSearch = searchTerm.trim().length > 0;
   const resultCountText = hasSearch
-    ? `${filtered.length} payment${filtered.length !== 1 ? 's' : ''} found with this ID`
+    ? `${filtered.length} payment${filtered.length !== 1 ? 's' : ''} found with ID: ${searchTerm.trim()}`
     : `${payments.length} payment${payments.length !== 1 ? 's' : ''} found`;
 
   return (
@@ -117,21 +117,29 @@ export default function PaymentList() {
               <thead>
                 <tr>
                   <th>Payment ID</th>
+                  <th>Source Account</th>
+                  <th>Destination Account</th>
                   <th>Amount</th>
                   <th>Currency</th>
                   <th>Status</th>
+                  <th>Created At</th>
                 </tr>
               </thead>
               <tbody>
                 {filtered.map((p) => (
                   <tr key={p.id} onClick={() => navigate(`/payments/${p.id}`)}>
                     <td className="id-cell" title={p.id}>{p.id}</td>
+                    <td className="mono" style={{ fontSize: '12px' }}>{p.sourceAccount || '—'}</td>
+                    <td className="mono" style={{ fontSize: '12px' }}>{p.destinationAccount || '—'}</td>
                     <td>
                       <strong>{Number(p.amount).toFixed(2)}</strong>
                     </td>
                     <td>{p.currency}</td>
                     <td>
                       <span className={`badge badge-${p.status}`}>{p.status}</span>
+                    </td>
+                    <td style={{ fontSize: '12px', color: '#5f6368' }}>
+                      {p.createdAt ? new Date(p.createdAt).toLocaleString() : '—'}
                     </td>
                   </tr>
                 ))}

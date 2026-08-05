@@ -111,19 +111,27 @@ export default function Dashboard() {
               <thead>
                 <tr>
                   <th>Payment ID</th>
+                  <th>Source Account</th>
+                  <th>Destination Account</th>
                   <th>Amount</th>
                   <th>Status</th>
+                  <th>Created At</th>
                 </tr>
               </thead>
               <tbody>
                 {recent.map((p) => (
                   <tr key={p.id} onClick={() => navigate(`/payments/${p.id}`)}>
                     <td className="id-cell">{p.id}</td>
+                    <td className="mono" style={{ fontSize: '12px' }}>{p.sourceAccount || '—'}</td>
+                    <td className="mono" style={{ fontSize: '12px' }}>{p.destinationAccount || '—'}</td>
                     <td>
                       <strong>{Number(p.amount).toFixed(2)}</strong>{' '}
                       <span style={{ color: '#9aa0a6', fontSize: '12px' }}>{p.currency}</span>
                     </td>
                     <td><span className={`badge badge-${p.status}`}>{p.status}</span></td>
+                    <td style={{ fontSize: '12px', color: '#5f6368' }}>
+                      {p.createdAt ? new Date(p.createdAt).toLocaleString() : '—'}
+                    </td>
                   </tr>
                 ))}
               </tbody>

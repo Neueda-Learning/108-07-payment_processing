@@ -44,8 +44,10 @@ export default function Login() {
   return (
     <div className="login-wrapper">
       <div className="login-card">
-        <div className="login-logo">💳</div>
-        <h1>FlashPay</h1>
+        <div className="login-header">
+          <div className="login-logo">💳</div>
+          <h1>FlashPay</h1>
+        </div>
         <p className="subtitle">Sign in to your account to continue</p>
 
         {justRegistered && (
