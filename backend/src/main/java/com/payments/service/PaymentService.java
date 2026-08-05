@@ -4,6 +4,7 @@ import com.payments.dto.PaymentRequest;
 import com.payments.dto.PaymentResponse;
 import com.payments.dto.PaymentStatsResponse;
 import com.payments.dto.StatusHistoryResponse;
+import com.payments.exception.DuplicatePaymentException;
 import com.payments.exception.InvalidStatusTransitionException;
 import com.payments.exception.PaymentNotFoundException;
 import com.payments.exception.PaymentValidationException;
@@ -26,8 +27,9 @@ import java.util.UUID;
  * All payment business rules live here. The service owns validation, status
  * transitions and the audit trail; it knows nothing about HTTP.
  *
- * <p>Idempotency is not implemented yet — the MVP Payment carries no idempotency
- * key. See CHALLENGES.md entries 2 and 3.
+ * <p>Idempotency is enforced via a client-supplied {@code idempotencyKey}: a repeat
+ * submission with a key that already exists is rejected as a duplicate rather than
+ * silently creating a second payment.
  */
 @Service
 public class PaymentService {
@@ -45,9 +47,27 @@ public class PaymentService {
 
     @Transactional
     public PaymentResponse createPayment(PaymentRequest request) {
+        String idempotencyKey = normaliseIdempotencyKey(request.idempotencyKey());
+        if (idempotencyKey != null) {
+            paymentRepository.findByIdempotencyKey(idempotencyKey).ifPresent(existing -> {
+                throw new DuplicatePaymentException(idempotencyKey);
+            });
+        }
+
+        String sourceAccount = requireAccount(request.sourceAccount(), "Source account");
+        String destinationAccount = requireAccount(request.destinationAccount(), "Destination account");
+        if (sourceAccount.equalsIgnoreCase(destinationAccount)) {
+            throw new PaymentValidationException("INVALID_ACCOUNT",
+                    "Source and destination accounts must be different");
+        }
+
         Payment payment = new Payment();
         payment.setAmount(normaliseAmount(request.amount()));
         payment.setCurrency(normaliseCurrency(request.currency()));
+        payment.setSourceAccount(sourceAccount);
+        payment.setDestinationAccount(destinationAccount);
+        payment.setDescription(request.description());
+        payment.setIdempotencyKey(idempotencyKey);
         payment.setStatus(PaymentStatus.CREATED);
 
         Payment saved = paymentRepository.save(payment);
@@ -107,11 +127,13 @@ public class PaymentService {
         }
 
         String code = (errorCode == null || errorCode.isBlank()) ? DEFAULT_FAILURE_CODE : errorCode;
+        String message = "Payment failed while in status " + current;
 
         payment.setStatus(PaymentStatus.FAILED);
+        payment.setErrorCode(code);
+        payment.setErrorMessage(message);
         Payment saved = paymentRepository.save(payment);
-        recordHistory(saved, current, PaymentStatus.FAILED, "Payment failed",
-                code, "Payment failed while in status " + current);
+        recordHistory(saved, current, PaymentStatus.FAILED, "Payment failed", code, message);
 
         return PaymentResponse.from(saved);
     }
@@ -157,6 +179,19 @@ public class PaymentService {
     /** Stores money at a fixed 2 decimal places so 1.5 and 1.50 are never different rows. */
     private BigDecimal normaliseAmount(BigDecimal amount) {
         return amount.setScale(2, RoundingMode.HALF_UP);
+    }
+
+    /** Trims and validates an account number is non-blank; blank/whitespace-only is rejected. */
+    private String requireAccount(String account, String fieldLabel) {
+        if (account == null || account.isBlank()) {
+            throw new PaymentValidationException("INVALID_ACCOUNT", fieldLabel + " is required");
+        }
+        return account.trim();
+    }
+
+    /** Idempotency key is optional; blank input is treated the same as absent. */
+    private String normaliseIdempotencyKey(String idempotencyKey) {
+        return (idempotencyKey == null || idempotencyKey.isBlank()) ? null : idempotencyKey.trim();
     }
 
     /**
