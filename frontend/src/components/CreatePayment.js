@@ -4,6 +4,12 @@ import { accountsApi, paymentsApi } from '../services/api';
 
 const CURRENCIES = ['USD', 'EUR', 'INR'];
 
+/** Below this many characters a name search isn't fired — see AccountService on the backend. */
+const MIN_NAME_SEARCH_LENGTH = 2;
+
+/** How long to wait after the user stops typing before searching for a destination. */
+const NAME_SEARCH_DEBOUNCE_MS = 300;
+
 const INITIAL_FORM = {
   amount: '',
   currency: 'USD',
@@ -38,6 +44,12 @@ export default function CreatePayment() {
   const [accountsLoading, setAccountsLoading] = useState(true);
   const [idempotencyKey, setIdempotencyKey] = useState(generateIdempotencyKey);
 
+  // Destination accounts matching the typed account holder name — looked up across
+  // every user's accounts (not just the caller's own), since a destination is
+  // typically someone else. Populated by the debounced search effect below.
+  const [destinationMatches, setDestinationMatches] = useState([]);
+  const [destinationSearchLoading, setDestinationSearchLoading] = useState(false);
+
   useEffect(() => {
     let cancelled = false;
     accountsApi.getAll()
@@ -57,22 +69,62 @@ export default function CreatePayment() {
     return () => { cancelled = true; };
   }, []);
 
+  // Search for destination accounts as the user types a holder name. Debounced so a
+  // request isn't fired on every keystroke.
   useEffect(() => {
-    if (!form.destinationAccount || form.destinationAccountName) return;
-    const selected = bankAccounts.find((a) => a.accountNumber === form.destinationAccount);
-    if (selected?.accountHolderName) {
-      setForm((prev) => ({ ...prev, destinationAccountName: selected.accountHolderName }));
+    const name = form.destinationAccountName.trim();
+    if (name.length < MIN_NAME_SEARCH_LENGTH) {
+      setDestinationMatches([]);
+      setDestinationSearchLoading(false);
+      return;
     }
-  }, [bankAccounts, form.destinationAccount, form.destinationAccountName]);
 
-  const destinationOptions = bankAccounts.filter((a) => a.accountNumber !== form.sourceAccount);
+    let cancelled = false;
+    setDestinationSearchLoading(true);
+    const timer = setTimeout(() => {
+      accountsApi.searchByHolderName(name)
+        .then((response) => {
+          if (!cancelled) setDestinationMatches(response.data);
+        })
+        .catch(() => {
+          if (!cancelled) setDestinationMatches([]);
+        })
+        .finally(() => {
+          if (!cancelled) setDestinationSearchLoading(false);
+        });
+    }, NAME_SEARCH_DEBOUNCE_MS);
+
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [form.destinationAccountName]);
+
+  // Retrying a failed payment (see generateIdempotencyKey above) prefills
+  // destinationAccount but has no holder name to go with it; resolve it once so the
+  // fields aren't left inconsistent.
+  useEffect(() => {
+    if (!retryPayload?.destinationAccount) return;
+    let cancelled = false;
+    accountsApi.getByAccountNumber(retryPayload.destinationAccount)
+      .then((response) => {
+        if (cancelled) return;
+        setForm((prev) => ({ ...prev, destinationAccountName: response.data.accountHolderName }));
+        setDestinationMatches([response.data]);
+      })
+      .catch(() => { /* leave the name blank; the destination fields will need reselecting */ });
+    return () => { cancelled = true; };
+    // Runs once for the retry payload this component mounted with.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const destinationOptions = destinationMatches.filter((a) => a.accountNumber !== form.sourceAccount);
 
   function handleDestinationNameChange(value) {
-    const firstMatch = destinationOptions.find((a) => a.accountHolderName === value);
     setForm((prev) => ({
       ...prev,
       destinationAccountName: value,
-      destinationAccount: firstMatch ? firstMatch.accountNumber : '',
+      destinationAccount: '',
     }));
     setFieldErrors((prev) => ({
       ...prev,
@@ -86,7 +138,7 @@ export default function CreatePayment() {
     setForm((prev) => ({
       ...prev,
       destinationAccount: value,
-      destinationAccountName: selected ? selected.accountHolderName : '',
+      destinationAccountName: selected ? selected.accountHolderName : prev.destinationAccountName,
     }));
     setFieldErrors((prev) => ({
       ...prev,
@@ -141,13 +193,11 @@ export default function CreatePayment() {
     } else if (form.sourceAccount && form.destinationAccount === form.sourceAccount) {
       errors.destinationAccount = 'Destination account must be different from source account.';
     } else if (!destinationOptions.some((a) => a.accountNumber === form.destinationAccount)) {
-      errors.destinationAccount = 'Please select a valid destination account.';
+      errors.destinationAccount = 'Please select a destination account number from the dropdown.';
     }
 
-    if (!form.destinationAccountName) {
+    if (!form.destinationAccountName.trim()) {
       errors.destinationAccountName = 'Destination account name is required.';
-    } else if (!destinationOptions.some((a) => a.accountHolderName === form.destinationAccountName)) {
-      errors.destinationAccountName = 'Please select a valid destination account name.';
     }
 
     if (form.description && form.description.length > 255) {
@@ -251,19 +301,23 @@ export default function CreatePayment() {
 
             <div className="form-group">
               <label htmlFor="destinationAccountName">Destination Account Name *</label>
-              <select
+              <input
                 id="destinationAccountName"
                 name="destinationAccountName"
+                type="text"
+                list="destinationAccountNameSuggestions"
+                autoComplete="off"
                 className={`form-control ${fieldErrors.destinationAccountName ? 'error' : ''}`}
                 value={form.destinationAccountName}
                 onChange={(e) => handleDestinationNameChange(e.target.value)}
-                disabled={loading || accountsLoading}
-              >
-                <option value="">Select destination account name</option>
+                placeholder="Type the recipient's account holder name"
+                disabled={loading}
+              />
+              <datalist id="destinationAccountNameSuggestions">
                 {Array.from(new Set(destinationOptions.map((account) => account.accountHolderName))).map((name) => (
-                  <option key={name} value={name}>{name}</option>
+                  <option key={name} value={name} />
                 ))}
-              </select>
+              </datalist>
               {fieldErrors.destinationAccountName && (
                 <div className="form-error">{fieldErrors.destinationAccountName}</div>
               )}
@@ -279,16 +333,22 @@ export default function CreatePayment() {
                 className={`form-control ${fieldErrors.destinationAccount ? 'error' : ''}`}
                 value={form.destinationAccount}
                 onChange={(e) => handleDestinationAccountChange(e.target.value)}
-                disabled={loading || accountsLoading}
+                disabled={loading}
               >
-                <option value="">Select destination account number</option>
-                {destinationOptions
-                  .filter((account) => !form.destinationAccountName || account.accountHolderName === form.destinationAccountName)
-                  .map((account) => (
-                    <option key={account.accountNumber} value={account.accountNumber}>
-                      {account.accountNumber} - {account.accountHolderName}
-                    </option>
-                  ))}
+                <option value="">
+                  {form.destinationAccountName.trim().length < MIN_NAME_SEARCH_LENGTH
+                    ? 'Type a destination account name above'
+                    : destinationSearchLoading
+                      ? 'Searching…'
+                      : destinationOptions.length === 0
+                        ? 'No matching accounts found'
+                        : 'Select destination account number'}
+                </option>
+                {destinationOptions.map((account) => (
+                  <option key={account.accountNumber} value={account.accountNumber}>
+                    {account.accountNumber} - {account.accountHolderName} ({account.bankName})
+                  </option>
+                ))}
               </select>
               {fieldErrors.destinationAccount && (
                 <div className="form-error">{fieldErrors.destinationAccount}</div>

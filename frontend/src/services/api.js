@@ -81,6 +81,14 @@ export const accountsApi = {
       bankName: payload.bankName,
       accountType: payload.accountType,
     }),
+
+  // Payment-destination lookup: search across every user's accounts by (partial)
+  // account holder name, so a payment can be sent to someone else's account.
+  searchByHolderName: (holderName) => api.get('/accounts/search', { params: { holderName } }),
+
+  // Resolves a single already-known account number back to its holder name, e.g.
+  // to re-populate the destination fields when retrying a failed payment.
+  getByAccountNumber: (accountNumber) => api.get(`/accounts/${accountNumber}`),
 };
 
 export default api;

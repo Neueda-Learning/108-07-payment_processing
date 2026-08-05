@@ -1,5 +1,6 @@
 package com.payments.controller;
 
+import com.payments.dto.AccountLookupResponse;
 import com.payments.dto.AccountRequest;
 import com.payments.dto.AccountResponse;
 import com.payments.service.AccountService;
@@ -10,9 +11,11 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
@@ -46,5 +49,30 @@ public class AccountController {
     @Operation(summary = "List the authenticated user's bank accounts")
     public ResponseEntity<List<AccountResponse>> listAccounts(Authentication authentication) {
         return ResponseEntity.ok(accountService.getAccountsForUser(authentication.getName()));
+    }
+
+    /**
+     * Declared before {@code /{accountNumber}}-style routes would be for the same
+     * reason as {@code PaymentController#getStats}: a literal path segment always
+     * wins over a path variable, so this is never mistaken for a lookup.
+     */
+    @GetMapping("/search")
+    @Operation(summary = "Search for a payment destination by account holder name",
+               description = "Case-insensitive partial match across every user's accounts, so a payment can be "
+                           + "sent to someone else's account. Returns only public-safe fields (no balance or "
+                           + "username). Queries shorter than 2 characters return no results.")
+    public ResponseEntity<List<AccountLookupResponse>> searchAccounts(
+            @RequestParam(required = false, defaultValue = "") String holderName) {
+        return ResponseEntity.ok(accountService.searchByAccountHolderName(holderName));
+    }
+
+    @GetMapping("/{accountNumber}")
+    @Operation(summary = "Look up a single account's public details by account number",
+               description = "Used to redisplay an already-chosen destination's holder name (e.g. retrying a "
+                           + "failed payment) without a fresh name search. 404 if no such account exists.")
+    public ResponseEntity<AccountLookupResponse> getAccount(@PathVariable String accountNumber) {
+        return accountService.getByAccountNumber(accountNumber)
+                .map(ResponseEntity::ok)
+                .orElseGet(() -> ResponseEntity.notFound().build());
     }
 }
