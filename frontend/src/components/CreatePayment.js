@@ -8,6 +8,7 @@ const INITIAL_FORM = {
   amount: '',
   currency: 'USD',
   sourceAccount: '',
+  destinationAccountName: '',
   destinationAccount: '',
   description: '',
 };
@@ -56,13 +57,54 @@ export default function CreatePayment() {
     return () => { cancelled = true; };
   }, []);
 
+  useEffect(() => {
+    if (!form.destinationAccount || form.destinationAccountName) return;
+    const selected = bankAccounts.find((a) => a.accountNumber === form.destinationAccount);
+    if (selected?.accountHolderName) {
+      setForm((prev) => ({ ...prev, destinationAccountName: selected.accountHolderName }));
+    }
+  }, [bankAccounts, form.destinationAccount, form.destinationAccountName]);
+
+  const destinationOptions = bankAccounts.filter((a) => a.accountNumber !== form.sourceAccount);
+
+  function handleDestinationNameChange(value) {
+    const firstMatch = destinationOptions.find((a) => a.accountHolderName === value);
+    setForm((prev) => ({
+      ...prev,
+      destinationAccountName: value,
+      destinationAccount: firstMatch ? firstMatch.accountNumber : '',
+    }));
+    setFieldErrors((prev) => ({
+      ...prev,
+      destinationAccountName: '',
+      destinationAccount: '',
+    }));
+  }
+
+  function handleDestinationAccountChange(value) {
+    const selected = destinationOptions.find((a) => a.accountNumber === value);
+    setForm((prev) => ({
+      ...prev,
+      destinationAccount: value,
+      destinationAccountName: selected ? selected.accountHolderName : '',
+    }));
+    setFieldErrors((prev) => ({
+      ...prev,
+      destinationAccountName: '',
+      destinationAccount: '',
+    }));
+  }
+
   function handleChange(e) {
     const { name, value } = e.target;
-    // Destination account accepts digits only (no spaces), capped at 12 characters.
-    const nextValue = name === 'destinationAccount'
-      ? value.replace(/\D/g, '').slice(0, 12)
-      : value;
-    setForm((prev) => ({ ...prev, [name]: nextValue }));
+    setForm((prev) => {
+      const updated = { ...prev, [name]: value };
+      if (name === 'sourceAccount' && value === prev.destinationAccount) {
+        updated.destinationAccount = '';
+        updated.destinationAccountName = '';
+      }
+      return updated;
+    });
     setFieldErrors((prev) => ({ ...prev, [name]: '' }));
     setServerError('');
   }
@@ -94,12 +136,18 @@ export default function CreatePayment() {
 
     if (!form.destinationAccount) {
       errors.destinationAccount = 'Destination account is required.';
-    } else if (/\s/.test(form.destinationAccount)) {
-      errors.destinationAccount = 'Destination account must not contain spaces.';
     } else if (!accountPattern.test(form.destinationAccount)) {
       errors.destinationAccount = 'Destination account must be exactly 12 digits.';
     } else if (form.sourceAccount && form.destinationAccount === form.sourceAccount) {
       errors.destinationAccount = 'Destination account must be different from source account.';
+    } else if (!destinationOptions.some((a) => a.accountNumber === form.destinationAccount)) {
+      errors.destinationAccount = 'Please select a valid destination account.';
+    }
+
+    if (!form.destinationAccountName) {
+      errors.destinationAccountName = 'Destination account name is required.';
+    } else if (!destinationOptions.some((a) => a.accountHolderName === form.destinationAccountName)) {
+      errors.destinationAccountName = 'Please select a valid destination account name.';
     }
 
     if (form.description && form.description.length > 255) {
@@ -144,7 +192,10 @@ export default function CreatePayment() {
   }
 
   function handleReset() {
-    setForm({ ...INITIAL_FORM });
+    setForm({
+      ...INITIAL_FORM,
+      sourceAccount: bankAccounts[0]?.accountNumber || '',
+    });
     setFieldErrors({});
     setServerError('');
     setIdempotencyKey(generateIdempotencyKey());
@@ -199,23 +250,51 @@ export default function CreatePayment() {
             </div>
 
             <div className="form-group">
-              <label htmlFor="destinationAccount">Destination Account *</label>
-              <input
+              <label htmlFor="destinationAccountName">Destination Account Name *</label>
+              <select
+                id="destinationAccountName"
+                name="destinationAccountName"
+                className={`form-control ${fieldErrors.destinationAccountName ? 'error' : ''}`}
+                value={form.destinationAccountName}
+                onChange={(e) => handleDestinationNameChange(e.target.value)}
+                disabled={loading || accountsLoading}
+              >
+                <option value="">Select destination account name</option>
+                {Array.from(new Set(destinationOptions.map((account) => account.accountHolderName))).map((name) => (
+                  <option key={name} value={name}>{name}</option>
+                ))}
+              </select>
+              {fieldErrors.destinationAccountName && (
+                <div className="form-error">{fieldErrors.destinationAccountName}</div>
+              )}
+            </div>
+          </div>
+
+          <div className="form-row">
+            <div className="form-group">
+              <label htmlFor="destinationAccount">Destination Account Number *</label>
+              <select
                 id="destinationAccount"
                 name="destinationAccount"
-                type="text"
-                inputMode="numeric"
-                maxLength={12}
                 className={`form-control ${fieldErrors.destinationAccount ? 'error' : ''}`}
                 value={form.destinationAccount}
-                onChange={handleChange}
-                placeholder="12-digit account number"
-                disabled={loading}
-              />
+                onChange={(e) => handleDestinationAccountChange(e.target.value)}
+                disabled={loading || accountsLoading}
+              >
+                <option value="">Select destination account number</option>
+                {destinationOptions
+                  .filter((account) => !form.destinationAccountName || account.accountHolderName === form.destinationAccountName)
+                  .map((account) => (
+                    <option key={account.accountNumber} value={account.accountNumber}>
+                      {account.accountNumber} - {account.accountHolderName}
+                    </option>
+                  ))}
+              </select>
               {fieldErrors.destinationAccount && (
                 <div className="form-error">{fieldErrors.destinationAccount}</div>
               )}
             </div>
+            <div className="form-group" />
           </div>
 
           {/* Amount & Currency */}
