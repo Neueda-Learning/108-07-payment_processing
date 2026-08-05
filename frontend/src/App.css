@@ -383,8 +383,9 @@ body {
 
 .audit-summary-grid {
   display: grid;
-  grid-template-columns: minmax(260px, 380px) 1fr;
-  gap: 32px;
+  grid-template-columns: auto minmax(220px, 260px);
+  justify-content: center;
+  gap: 48px;
   align-items: center;
 }
 
@@ -395,6 +396,7 @@ body {
 .pie-chart-wrapper {
   display: flex;
   justify-content: center;
+  width: 100%;
 }
 
 .pie-chart {
@@ -440,9 +442,17 @@ body {
   flex-direction: column;
   gap: 14px;
   width: 100%;
-  max-width: 220px;
-  margin-left: auto;
-  margin-right: 24px;
+  max-width: 250px;
+  margin: 0;
+  justify-self: start;
+}
+
+.audit-status-links {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+  justify-content: flex-start;
+  padding-left: 8px;
 }
 
 /* ── Table ── */
