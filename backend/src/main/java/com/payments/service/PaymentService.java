@@ -23,6 +23,8 @@ import java.math.RoundingMode;
 import java.util.Currency;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 
 /**
@@ -38,22 +40,43 @@ import java.util.UUID;
  * source account is actually debited, and SENT to COMPLETED credits the destination.
  * A payment that fails after money has left the source (i.e. it was SENT) is
  * refunded back to the source as part of failing it.
+ *
+ * <p>Cross-currency transfers are supported: the source account must hold its
+ * balance in the payment's currency (that's what gets debited), but the
+ * destination account may be held in a different currency. The exchange rate and
+ * resulting converted amount are looked up via {@link ExchangeRateService} and
+ * locked into the payment at creation time, so the amount actually credited to the
+ * destination on COMPLETED never drifts from what was quoted when the payment was
+ * created.
  */
 @Service
 public class PaymentService {
 
     private static final String DEFAULT_FAILURE_CODE = "PROCESSING_ERROR";
 
+    /** This system only operates in these currencies; anything else is rejected up front. */
+    private static final Set<String> SUPPORTED_CURRENCIES = Set.of("USD", "EUR", "INR");
+
+    /** Per-transaction maximum amount, in the payment's own (source) currency. */
+    private static final Map<String, BigDecimal> MAX_AMOUNT_BY_CURRENCY = Map.of(
+            "INR", BigDecimal.valueOf(100_000),
+            "USD", BigDecimal.valueOf(10_000),
+            "EUR", BigDecimal.valueOf(10_000)
+    );
+
     private final PaymentRepository paymentRepository;
     private final PaymentStatusHistoryRepository historyRepository;
     private final AccountRepository accountRepository;
+    private final ExchangeRateService exchangeRateService;
 
     public PaymentService(PaymentRepository paymentRepository,
                           PaymentStatusHistoryRepository historyRepository,
-                          AccountRepository accountRepository) {
+                          AccountRepository accountRepository,
+                          ExchangeRateService exchangeRateService) {
         this.paymentRepository = paymentRepository;
         this.historyRepository = historyRepository;
         this.accountRepository = accountRepository;
+        this.exchangeRateService = exchangeRateService;
     }
 
     @Transactional
@@ -73,8 +96,9 @@ public class PaymentService {
         }
 
         String currency = normaliseCurrency(request.currency());
-        ensureAccountUsable(sourceAccount, currency);
-        ensureAccountUsable(destinationAccount, currency);
+        Account source = findAccountOrThrow(sourceAccount);
+        ensureCurrencyMatches(source, currency);
+        Account destination = findAccountOrThrow(destinationAccount);
 
         // A payment can only be initiated *from* an account the caller actually owns —
         // otherwise any authenticated user could drain any other user's account by
@@ -84,9 +108,21 @@ public class PaymentService {
                     "Source account " + sourceAccount + " does not belong to the authenticated user");
         }
 
+        // The destination account can be held in a different currency than the
+        // source; the rate is locked in now so the amount actually credited later
+        // (on COMPLETED) doesn't drift with the market between now and then.
+        BigDecimal amount = normaliseAmount(request.amount());
+        ensureAmountWithinLimit(currency, amount);
+        String destinationCurrency = destination.getCurrency();
+        BigDecimal exchangeRate = exchangeRateService.getRate(currency, destinationCurrency);
+        BigDecimal convertedAmount = exchangeRateService.convert(amount, currency, destinationCurrency);
+
         Payment payment = new Payment();
-        payment.setAmount(normaliseAmount(request.amount()));
+        payment.setAmount(amount);
         payment.setCurrency(currency);
+        payment.setDestinationCurrency(destinationCurrency);
+        payment.setExchangeRate(exchangeRate);
+        payment.setConvertedAmount(convertedAmount);
         payment.setSourceAccount(sourceAccount);
         payment.setDestinationAccount(destinationAccount);
         payment.setDescription(request.description());
@@ -280,12 +316,16 @@ public class PaymentService {
         return (idempotencyKey == null || idempotencyKey.isBlank()) ? null : idempotencyKey.trim();
     }
 
-    /** Confirms an account exists and its balance is held in the payment's currency. */
-    private void ensureAccountUsable(String accountNumber, String paymentCurrency) {
-        Account account = findAccountOrThrow(accountNumber);
+    /**
+     * Confirms the source account's balance is held in the payment's currency —
+     * funds are always debited from the source in that currency. The destination
+     * account is free to be held in a different currency; see the conversion done
+     * in {@link #createPayment} and {@link #creditDestinationAccount}.
+     */
+    private void ensureCurrencyMatches(Account account, String paymentCurrency) {
         if (!account.getCurrency().equalsIgnoreCase(paymentCurrency)) {
             throw new PaymentValidationException("INVALID_CURRENCY",
-                    "Account " + accountNumber + " is held in " + account.getCurrency()
+                    "Account " + account.getAccountNumber() + " is held in " + account.getCurrency()
                             + ", not " + paymentCurrency);
         }
     }
@@ -311,7 +351,9 @@ public class PaymentService {
 
     private void creditDestinationAccount(Payment payment) {
         Account destination = findAccountOrThrow(payment.getDestinationAccount());
-        destination.setBalance(destination.getBalance().add(payment.getAmount()));
+        // Credited in the destination's own currency using the rate locked in at
+        // creation time, not payment.getAmount() (which is in the source currency).
+        destination.setBalance(destination.getBalance().add(payment.getConvertedAmount()));
         accountRepository.save(destination);
     }
 
@@ -327,10 +369,21 @@ public class PaymentService {
                         "Account does not exist: " + accountNumber));
     }
 
+    /** Enforces the per-currency maximum transaction amount defined in {@link #MAX_AMOUNT_BY_CURRENCY}. */
+    private void ensureAmountWithinLimit(String currency, BigDecimal amount) {
+        BigDecimal limit = MAX_AMOUNT_BY_CURRENCY.get(currency);
+        if (limit != null && amount.compareTo(limit) > 0) {
+            throw new PaymentValidationException("AMOUNT_LIMIT_EXCEEDED",
+                    "Amount must not exceed " + limit + " " + currency + " per payment");
+        }
+    }
+
     /**
      * Bean Validation checks the currency is three characters; only this can check
-     * it is a real one. {@link Currency#getInstance(String)} is the JDK's own ISO
-     * 4217 table, so there is no hand-maintained list to fall out of date.
+     * it is a real one and one this system actually supports. {@link Currency#getInstance(String)}
+     * is the JDK's own ISO 4217 table, so there is no hand-maintained list of real
+     * currencies to fall out of date - but this system only operates in
+     * {@link #SUPPORTED_CURRENCIES}, so anything else is rejected too.
      */
     private String normaliseCurrency(String currency) {
         String code = currency.trim().toUpperCase(Locale.ROOT);
@@ -339,6 +392,10 @@ public class PaymentService {
         } catch (IllegalArgumentException ex) {
             throw new PaymentValidationException("INVALID_CURRENCY",
                     "Currency is not a valid ISO 4217 code: " + currency);
+        }
+        if (!SUPPORTED_CURRENCIES.contains(code)) {
+            throw new PaymentValidationException("UNSUPPORTED_CURRENCY",
+                    "Currency " + code + " is not supported. Supported currencies: " + SUPPORTED_CURRENCIES);
         }
         return code;
     }
