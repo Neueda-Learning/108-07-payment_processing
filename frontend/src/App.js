@@ -47,7 +47,7 @@ function RequireBankAccount({ children }) {
 }
 
 function AppRoutes() {
-  const { token } = useAuth();
+  const { token, username } = useAuth();
   const [sidebarWidth, setSidebarWidth] = useState(() =>
     parseInt(localStorage.getItem('pps_sidebar_width') || '360', 10)
   );
@@ -60,6 +60,14 @@ function AppRoutes() {
   return (
     <Router>
       {token && <Navbar width={sidebarWidth} onWidthChange={handleWidthChange} />}
+      {token && (
+        <div className="profile-chip" aria-label="Current user profile">
+          <button type="button" className="profile-chip-button" title={`User ID: ${username || 'Unknown User'}`}>
+            <span aria-hidden="true">👤</span>
+          </button>
+          <div className="profile-chip-tooltip">User ID: {username || 'Unknown User'}</div>
+        </div>
+      )}
       <div className={token ? 'main-content' : ''} style={token ? { marginLeft: sidebarWidth } : {}}>
         <Routes>
           <Route

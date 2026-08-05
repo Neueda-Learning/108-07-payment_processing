@@ -47,8 +47,62 @@ body {
   min-height: 100vh;
 }
 
+.profile-chip {
+  position: fixed;
+  top: 14px;
+  right: 18px;
+  z-index: 220;
+}
+
+.profile-chip-button {
+  width: 42px;
+  height: 42px;
+  border: 1px solid var(--gray-200);
+  border-radius: 50%;
+  background: var(--white);
+  box-shadow: var(--shadow-sm);
+  cursor: pointer;
+  font-size: 20px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.profile-chip-button:hover {
+  background: var(--primary-light);
+}
+
+.profile-chip-tooltip {
+  position: absolute;
+  top: 48px;
+  right: 0;
+  min-width: 180px;
+  max-width: 260px;
+  background: var(--gray-900);
+  color: var(--white);
+  border-radius: var(--radius);
+  padding: 8px 10px;
+  font-size: 12.5px;
+  box-shadow: var(--shadow-md);
+  opacity: 0;
+  transform: translateY(-4px);
+  pointer-events: none;
+  transition: opacity var(--transition), transform var(--transition);
+  white-space: nowrap;
+}
+
+.profile-chip:hover .profile-chip-tooltip {
+  opacity: 1;
+  transform: translateY(0);
+}
+
 @media (max-width: 768px) {
   .main-content { margin-left: 0; padding: 16px; }
+
+  .profile-chip {
+    top: 10px;
+    right: 10px;
+  }
 }
 
 /* ── Navbar ── */
@@ -373,6 +427,113 @@ body {
 .stat-card.stat-failed  .stat-value { color: var(--danger); }
 .stat-card.stat-pending .stat-value { color: var(--warning); }
 
+.dashboard-balance-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 320px;
+  gap: 20px;
+  align-items: start;
+}
+
+.dashboard-balance-caption {
+  font-size: 12.5px;
+  color: var(--gray-600);
+  margin-bottom: 10px;
+}
+
+.balance-chart {
+  width: 100%;
+  min-height: 250px;
+  border: 1px solid var(--gray-200);
+  border-radius: 10px;
+  background: linear-gradient(180deg, #ffffff 0%, #f8f9fa 100%);
+}
+
+.balance-axis {
+  stroke: var(--gray-400);
+  stroke-width: 1;
+}
+
+.balance-grid-line {
+  stroke: var(--gray-200);
+  stroke-width: 1;
+}
+
+.balance-line {
+  fill: none;
+  stroke: var(--primary);
+  stroke-width: 2.5;
+}
+
+.balance-point {
+  fill: var(--primary);
+}
+
+.balance-tick-label {
+  font-size: 11px;
+  fill: var(--gray-600);
+}
+
+.balance-tick-left {
+  text-anchor: end;
+}
+
+.balance-tick-center {
+  text-anchor: middle;
+}
+
+.dashboard-account-list {
+  border: 1px solid var(--gray-200);
+  border-radius: 10px;
+  padding: 14px;
+  background: var(--white);
+  max-height: 360px;
+  overflow-y: auto;
+}
+
+.dashboard-account-item {
+  width: 100%;
+  text-align: left;
+  border: 1px solid var(--gray-200);
+  border-radius: 8px;
+  background: var(--white);
+  padding: 10px 12px;
+  margin-bottom: 10px;
+  cursor: pointer;
+  transition: border-color var(--transition), background var(--transition), box-shadow var(--transition);
+}
+
+.dashboard-account-item:last-child {
+  margin-bottom: 0;
+}
+
+.dashboard-account-item:hover {
+  border-color: var(--primary);
+}
+
+.dashboard-account-item.active {
+  border-color: var(--primary);
+  background: var(--primary-light);
+  box-shadow: inset 0 0 0 1px rgba(26, 115, 232, 0.2);
+}
+
+.dashboard-account-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--gray-900);
+}
+
+.dashboard-account-subtitle {
+  margin-top: 3px;
+  font-size: 11.5px;
+  color: var(--gray-600);
+}
+
+.dashboard-account-balance {
+  margin-top: 8px;
+  font-size: 12.5px;
+  color: var(--gray-800);
+}
+
 /* ── Audit History ── */
 :root {
   --pie-total: var(--primary);
@@ -391,6 +552,14 @@ body {
 
 @media (max-width: 768px) {
   .audit-summary-grid { grid-template-columns: 1fr; }
+
+  .dashboard-balance-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .dashboard-account-list {
+    max-height: none;
+  }
 }
 
 .pie-chart-wrapper {
@@ -677,6 +846,19 @@ tbody td.id-cell {
   justify-content: center;
   margin-bottom: 25px;
   font-size: 27px;
+}
+
+.add-account-page.first-time {
+  min-height: calc(100vh - 80px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.page-header.first-time {
+  justify-content: center;
+  text-align: center;
 }
 
 /* ── Alerts ── */

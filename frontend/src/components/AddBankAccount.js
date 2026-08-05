@@ -110,8 +110,8 @@ export default function AddBankAccount() {
   const isFirstTime = accounts.length === 0;
 
   return (
-    <div>
-      <div className="page-header">
+    <div className={`add-account-page ${isFirstTime ? 'first-time' : ''}`}>
+      <div className={`page-header ${isFirstTime ? 'first-time' : ''}`}>
         <div>
           <h1>Add Bank Account</h1>
           <p>
@@ -122,7 +122,7 @@ export default function AddBankAccount() {
         </div>
       </div>
 
-      <div className="card" style={{ maxWidth: '600px', marginBottom: '24px' }}>
+      <div className="card" style={{ maxWidth: '600px', marginBottom: '24px', marginInline: 'auto' }}>
         {serverError && <div className="alert alert-error">{serverError}</div>}
         {successMessage && <div className="alert alert-success">{successMessage}</div>}
 

@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { localRegister } from '../services/localAuth';
 
 const PASSWORD_RULES = [
+  { key: 'length', label: '8 to 20 characters', test: (pw) => /^\S{8,20}$/.test(pw) },
   { key: 'lowercase', label: 'One lowercase letter', test: (pw) => /[a-z]/.test(pw) },
   { key: 'uppercase', label: 'One capital letter', test: (pw) => /[A-Z]/.test(pw) },
   { key: 'number', label: 'One number', test: (pw) => /\d/.test(pw) },
@@ -38,9 +39,9 @@ export default function Signup() {
 
     if (!form.password) {
       errors.password = 'Password is required.';
-    } else if (!/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9])\S{8,12}$/.test(form.password)) {
+    } else if (!/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9])\S{8,20}$/.test(form.password)) {
       errors.password =
-        'Password must be 8-12 characters with at least 1 lowercase letter, 1 capital letter, 1 number, and 1 special character (no spaces).';
+        'Password must be 8-20 characters with at least 1 lowercase letter, 1 capital letter, 1 number, and 1 special character (no spaces).';
     }
 
     if (!form.confirmPassword) {
