@@ -28,7 +28,7 @@ export default function Login() {
     setLoading(true);
     try {
       const token = await localLogin(form.username.trim(), form.password);
-      login(token);
+      login(token, form.username.trim());
       navigate('/dashboard', { replace: true });
     } catch (err) {
       setError(

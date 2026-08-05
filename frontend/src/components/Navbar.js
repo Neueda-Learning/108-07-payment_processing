@@ -3,9 +3,11 @@ import { NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
 const NAV_ITEMS = [
-  { to: '/dashboard',    icon: '📊', label: 'Dashboard'    },
-  { to: '/payments',     icon: '📋', label: 'All Payments' },
-  { to: '/payments/new', icon: '➕', label: 'New Payment'  },
+  { to: '/dashboard',      icon: '📊', label: 'Dashboard'     },
+  { to: '/audit-history',  icon: '🕘', label: 'Audit History' },
+  { to: '/payments',       icon: '📋', label: 'All Payments'  },
+  { to: '/payments/new',   icon: '➕', label: 'New Payment'   },
+  { to: '/add-bank-account', icon: '🏦', label: 'Add Accounts' },
 ];
 
 const MIN_WIDTH = 180;

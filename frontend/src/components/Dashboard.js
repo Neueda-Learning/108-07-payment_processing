@@ -1,21 +1,9 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { localGetAllPayments, localGetStats } from '../services/localPayments';
-
-const STATUSES = ['CREATED', 'VALIDATED', 'SENT', 'COMPLETED', 'FAILED'];
-
-function StatCard({ label, value, className }) {
-  return (
-    <div className={`stat-card ${className}`}>
-      <div className="stat-label">{label}</div>
-      <div className="stat-value">{value ?? '—'}</div>
-    </div>
-  );
-}
+import { localGetAllPayments } from '../services/localPayments';
 
 export default function Dashboard() {
   const navigate = useNavigate();
-  const [stats, setStats] = useState(null);
   const [recent, setRecent] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -26,8 +14,6 @@ export default function Dashboard() {
     try {
       const payments = await localGetAllPayments();
       setRecent(payments.slice(0, 8));
-      const statsData = await localGetStats();
-      setStats(statsData);
     } catch (err) {
       setError('Failed to load dashboard data.');
     } finally {
@@ -60,37 +46,6 @@ export default function Dashboard() {
       </div>
 
       {error && <div className="alert alert-error">{error}</div>}
-
-      {/* Stats */}
-      {stats && (
-        <div className="stats-grid">
-          <StatCard label="Total Payments"  value={stats.total}     className="stat-total" />
-          <StatCard label="Completed"       value={stats.completed} className="stat-completed" />
-          <StatCard label="Failed"          value={stats.failed}    className="stat-failed" />
-          <StatCard label="In Progress"     value={(stats.created || 0) + (stats.validated || 0) + (stats.sent || 0)} className="stat-pending" />
-        </div>
-      )}
-
-      {/* Status breakdown */}
-      {stats && (
-        <div className="card" style={{ marginBottom: '24px' }}>
-          <div className="section-title">Status Breakdown</div>
-          <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap' }}>
-            {STATUSES.map((s) => (
-              <Link
-                key={s}
-                to={`/payments?status=${s}`}
-                style={{ textDecoration: 'none' }}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 14px', borderRadius: '8px', border: '1px solid #e8eaed', background: '#fff' }}>
-                  <span className={`badge badge-${s}`}>{s}</span>
-                  <span style={{ fontWeight: 700, color: '#202124' }}>{stats[s.toLowerCase()] ?? 0}</span>
-                </div>
-              </Link>
-            ))}
-          </div>
-        </div>
-      )}
 
       {/* Recent payments */}
       <div className="card">
