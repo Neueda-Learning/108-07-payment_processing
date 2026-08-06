@@ -162,7 +162,7 @@ export default function CreatePayment() {
     setServerError('');
   }
   function generateIdempotencyKey() {
-    const cryptoObj = globalThis.crypto;
+    const cryptoObj = typeof window !== 'undefined' ? window.crypto : null;
 
     if (cryptoObj && typeof cryptoObj.randomUUID === 'function') {
       return cryptoObj.randomUUID();
