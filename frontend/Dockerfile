@@ -10,7 +10,7 @@ RUN npm ci
 COPY . .
 
 # Baked in at build time since CRA inlines REACT_APP_* vars into the bundle.
-ARG REACT_APP_API_BASE_URL=http://localhost:8080/api
+ARG REACT_APP_API_BASE_URL=http://localhost:8282/api
 ENV REACT_APP_API_BASE_URL=$REACT_APP_API_BASE_URL
 RUN npm run build
 
