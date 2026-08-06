@@ -44,7 +44,7 @@ services:
       context: ./frontend
       dockerfile: Dockerfile
       args:
-        REACT_APP_API_BASE_URL: ${REACT_APP_API_BASE_URL:-http://10.9.67.35:8082/api}
+        REACT_APP_API_BASE_URL: ${REACT_APP_API_BASE_URL:-/api}
     container_name: payment-frontend
     restart: unless-stopped
     depends_on:
