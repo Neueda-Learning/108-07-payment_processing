@@ -9,7 +9,7 @@ services:
       MYSQL_PASSWORD: ${MYSQL_PASSWORD:-password123}
       MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-rootpassword}
     ports:
-      - "3306:3306"
+      - "8083:3306"
     volumes:
       - mysql_data:/var/lib/mysql
       # Dump is only applied the first time the volume is initialized.
