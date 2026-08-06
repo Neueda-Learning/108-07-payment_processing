@@ -27,9 +27,6 @@ const INITIAL_FORM = {
  * constraint means a COMPLETED payment's key can never be reused to create a second
  * payment, even if this were somehow bypassed client-side.
  */
-function generateIdempotencyKey() {
-  return crypto.randomUUID();
-}
 
 export default function CreatePayment() {
   const navigate = useNavigate();
@@ -163,6 +160,9 @@ export default function CreatePayment() {
     });
     setFieldErrors((prev) => ({ ...prev, [name]: '' }));
     setServerError('');
+  }
+  function generateIdempotencyKey() {
+    return crypto.randomUUID();
   }
 
   function validate() {

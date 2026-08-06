@@ -53,6 +53,7 @@ public class AccountService {
 
         Account account = new Account();
         account.setAccountNumber(accountNumber);
+        account.setBankAccountNumber(accountNumber);
         account.setUsername(username);
         account.setCurrency(normaliseCurrency(request.currency()));
         account.setBalance(STARTING_BALANCE);

@@ -78,6 +78,7 @@ public class DataSeeder implements CommandLineRunner {
             account.setUsername(DUMMY_USERNAME);
             account.setCurrency(seed.currency());
             account.setBalance(SEED_BALANCE);
+            account.setBankAccountNumber(seed.accountNumber());
             account.setAccountHolderName("FlashPay Demo Funds");
             account.setBankName("FlashPay Demo Bank");
             account.setAccountType(seed.accountType());
