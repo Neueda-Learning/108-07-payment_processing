@@ -80,9 +80,13 @@ export default function Signup() {
   return (
     <div className="login-wrapper">
       <div className="login-card">
-        <div className="login-logo">💳</div>
-        <h1>Create Account</h1>
-        <p className="subtitle">Sign up to start using the payment system</p>
+        <div className="login-header">
+          <div className="login-logo">
+            <img src="/logo.jpg" alt="FlashPay logo" className="brand-logo brand-logo-login" />
+          </div>
+          <h1>Create Account</h1>
+        </div>
+        <p className="subtitle">Sign up to start using FlashPay</p>
 
         {serverError && <div className="alert alert-error">{serverError}</div>}
 
