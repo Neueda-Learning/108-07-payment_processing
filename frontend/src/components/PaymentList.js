@@ -108,9 +108,6 @@ export default function PaymentList() {
           <p>{resultCountText}</p>
         </div>
         <div style={{ display: 'flex', gap: '10px' }}>
-          <button className="btn btn-secondary btn-sm" onClick={() => loadPayments(activeStatus)}>
-            ↺ Refresh
-          </button>
           <Link to="/payments/new" className="btn btn-primary btn-sm">+ New Payment</Link>
         </div>
       </div>

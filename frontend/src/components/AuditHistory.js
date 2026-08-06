@@ -4,14 +4,13 @@ import { paymentsApi } from '../services/api';
 
 const STATUSES = ['CREATED', 'VALIDATED', 'SENT', 'COMPLETED', 'FAILED'];
 
-function StatCard({ label, value, className }) {
-  return (
-    <div className={`stat-card ${className}`}>
-      <div className="stat-label">{label}</div>
-      <div className="stat-value">{value ?? '—'}</div>
-    </div>
-  );
-}
+const STATUS_META = {
+  CREATED: { icon: '🆕', color: '#3b82f6' },
+  VALIDATED: { icon: '✅', color: '#a78bfa' },
+  SENT: { icon: '📤', color: '#eab308' },
+  COMPLETED: { icon: '🏁', color: '#22c55e' },
+  FAILED: { icon: '⚠️', color: '#ef4444' },
+};
 
 export default function AuditHistory() {
   const [stats, setStats] = useState(null);
@@ -42,12 +41,6 @@ export default function AuditHistory() {
     );
   }
 
-  const segments = [
-    { key: 'total', label: 'Total Payments', value: stats?.total ?? 0, className: 'stat-total' },
-    { key: 'completed', label: 'Completed', value: stats?.completed ?? 0, className: 'stat-completed' },
-    { key: 'failed', label: 'Failed', value: stats?.failed ?? 0, className: 'stat-failed' },
-  ];
-
   const pieSegments = [
     { key: 'completed', value: stats?.completed ?? 0 },
     { key: 'failed', value: stats?.failed ?? 0 },
@@ -61,7 +54,7 @@ export default function AuditHistory() {
     cumulative = end;
     return `var(--pie-${s.key}) ${start}% ${end}%`;
   });
-  const pieBackground = pieTotal > 0 ? `conic-gradient(${gradientStops.join(', ')})` : '#e8eaed';
+  const pieBackground = pieTotal > 0 ? `conic-gradient(${gradientStops.join(', ')})` : '#6B7280';
 
   return (
     <div>
@@ -70,15 +63,22 @@ export default function AuditHistory() {
           <h1>Audit History</h1>
           <p>Payment activity summary and status breakdown</p>
         </div>
-        <button className="btn btn-secondary btn-sm" onClick={loadStats}>↺ Refresh</button>
       </div>
 
       {error && <div className="alert alert-error">{error}</div>}
 
       {stats && (
-        <div className="card" style={{ marginBottom: '24px' }}>
-          <div className="section-title">Payment Summary</div>
-          <div className="audit-summary-grid">
+        <div className="payment-summary-row" style={{ marginBottom: '24px' }}>
+          <div className="card payment-summary-total-card">
+            <span className="payment-summary-total-icon" aria-hidden="true">💳</span>
+            <div className="payment-summary-total-info">
+              <div className="payment-summary-total-label">Total Payments</div>
+              <div className="payment-summary-total-count">{stats.total ?? 0}</div>
+              <div className="payment-summary-total-subtitle">All Time</div>
+            </div>
+          </div>
+
+          <div className="card payment-summary-chart-card">
             <div className="pie-chart-wrapper">
               <div className="pie-chart" style={{ background: pieBackground }}>
                 <div className="pie-chart-center">
@@ -88,10 +88,17 @@ export default function AuditHistory() {
               </div>
             </div>
 
-            <div className="audit-stats-vertical">
-              {segments.map((s) => (
-                <StatCard key={s.key} label={s.label} value={s.value} className={s.className} />
-              ))}
+            <div className="payment-summary-legend">
+              <div className="payment-summary-legend-item">
+                <span className="payment-summary-legend-swatch" style={{ background: 'var(--pie-completed)' }} />
+                <span className="payment-summary-legend-label">Completed</span>
+                <span className="payment-summary-legend-value">{stats.completed ?? 0}</span>
+              </div>
+              <div className="payment-summary-legend-item">
+                <span className="payment-summary-legend-swatch" style={{ background: 'var(--pie-failed)' }} />
+                <span className="payment-summary-legend-label">Failed</span>
+                <span className="payment-summary-legend-value">{stats.failed ?? 0}</span>
+              </div>
             </div>
           </div>
         </div>
@@ -102,18 +109,31 @@ export default function AuditHistory() {
         <div className="card">
           <div className="section-title">Status Breakdown</div>
           <div className="audit-status-links">
-            {STATUSES.map((s) => (
-              <Link
-                key={s}
-                to={`/payments?status=${s}`}
-                style={{ textDecoration: 'none' }}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 14px', borderRadius: '8px', border: '1px solid #e8eaed', background: '#fff' }}>
-                  <span className={`badge badge-${s}`}>{s}</span>
-                  <span style={{ fontWeight: 700, color: '#202124' }}>{stats[s.toLowerCase()] ?? 0}</span>
+            {STATUSES.map((s) => {
+              const meta = STATUS_META[s];
+              const card = (
+                <div
+                  className={`status-breakdown-card${s === 'COMPLETED' || s === 'FAILED' ? '' : ' status-breakdown-card-static'}`}
+                  style={{ borderBottomColor: meta.color }}
+                >
+                  <span className="status-breakdown-icon" aria-hidden="true">{meta.icon}</span>
+                  <div className="status-breakdown-info">
+                    <div className="status-breakdown-name">{s}</div>
+                    <div className="status-breakdown-count">{stats[s.toLowerCase()] ?? 0}</div>
+                  </div>
                 </div>
-              </Link>
-            ))}
+              );
+
+              const isLinkable = s === 'COMPLETED' || s === 'FAILED';
+
+              return isLinkable ? (
+                <Link key={s} to={`/payments?status=${s}`} style={{ textDecoration: 'none' }}>
+                  {card}
+                </Link>
+              ) : (
+                <div key={s}>{card}</div>
+              );
+            })}
           </div>
         </div>
       )}

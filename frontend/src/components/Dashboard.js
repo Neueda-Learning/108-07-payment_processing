@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { accountsApi, paymentsApi } from '../services/api';
+import { useAuth } from '../context/AuthContext';
 
 function getPaymentTimestamp(payment) {
   return payment.updatedAt || payment.createdAt || null;
@@ -163,6 +164,7 @@ function BalanceChart({ points }) {
 
 export default function Dashboard() {
   const navigate = useNavigate();
+  const { username } = useAuth();
   const [payments, setPayments] = useState([]);
   const [accounts, setAccounts] = useState([]);
   const [selectedAccount, setSelectedAccount] = useState('');
@@ -222,13 +224,30 @@ export default function Dashboard() {
 
   return (
     <div>
+      <div className="dashboard-greeting-card">
+        <div className="dashboard-greeting-text">
+          <h2>Greetings, {username || 'there'}</h2>
+          <p>
+            {new Date().toLocaleDateString(undefined, {
+              weekday: 'long',
+              year: 'numeric',
+              month: 'long',
+              day: 'numeric',
+            })}
+          </p>
+        </div>
+        <div className="dashboard-greeting-avatar" aria-label="Current user profile">
+          <span aria-hidden="true">👤</span>
+          <div className="dashboard-greeting-avatar-tooltip">{username || 'Unknown User'}</div>
+        </div>
+      </div>
+
       <div className="page-header">
         <div>
-          <h1>Dashboard</h1>
+          <h1 className="dashboard-page-title">Dashboard</h1>
           <p>Overview of all payment activity</p>
         </div>
         <div style={{ display: 'flex', gap: '10px' }}>
-          <button className="btn btn-secondary btn-sm" onClick={loadData}>↺ Refresh</button>
           <Link to="/payments/new" className="btn btn-primary btn-sm">+ New Payment</Link>
         </div>
       </div>
@@ -238,14 +257,13 @@ export default function Dashboard() {
       <div className="card" style={{ marginBottom: '24px' }}>
         <div className="dashboard-balance-layout">
           <div>
-            <div className="section-title" style={{ marginBottom: '12px' }}>
-              Balance Timeline by Account
+            <div className="dashboard-payment-activity-title" style={{ marginBottom: '4px' }}>
+              Payment Activity
             </div>
             {selectedAccountData ? (
               <>
-                <p className="dashboard-balance-caption">
-                  X-axis: timestamp, Y-axis: cumulative credit/debit for account{' '}
-                  <span className="mono">{selectedAccountData.accountNumber}</span>
+                <p className="dashboard-balance-amount">
+                  Balance: <strong>{Number(selectedAccountData.balance || 0).toFixed(2)} {selectedAccountData.currency}</strong>
                 </p>
                 <BalanceChart points={balanceTimeline} />
               </>
@@ -258,8 +276,8 @@ export default function Dashboard() {
           </div>
 
           <div className="dashboard-account-list">
-            <div className="section-title" style={{ marginBottom: '12px' }}>
-              Your Bank Accounts
+            <div className="dashboard-your-accounts-title" style={{ marginBottom: '12px' }}>
+              Your Accounts
             </div>
             {accounts.length === 0 ? (
               <p style={{ color: '#5f6368', fontSize: '13px' }}>No accounts found.</p>

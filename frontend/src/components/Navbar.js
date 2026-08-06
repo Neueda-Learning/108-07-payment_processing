@@ -5,9 +5,9 @@ import { useAuth } from '../context/AuthContext';
 const NAV_ITEMS = [
   { to: '/dashboard',      icon: '📊', label: 'Dashboard'     },
   { to: '/audit-history',  icon: '🕘', label: 'Audit History' },
-  { to: '/payments',       icon: '📋', label: 'All Payments'  },
+  { to: '/payments',       icon: '📋', label: 'Payments'  },
   { to: '/payments/new',   icon: '➕', label: 'New Payment'   },
-  { to: '/add-bank-account', icon: '🏦', label: 'Add Accounts' },
+  { to: '/add-bank-account', icon: '🏦', label: 'Accounts' },
 ];
 
 const MIN_WIDTH = 180;
@@ -58,7 +58,7 @@ export default function Navbar({ width = 360, onWidthChange }) {
     <nav className="navbar" style={{ width }}>
       <div className="navbar-brand">
         <h2><img src="/logo.jpg" alt="FlashPay logo" className="brand-logo brand-logo-nav" /> FlashPay</h2>
-        <span>Payment Processing</span>
+        <span>Payment Processing System</span>
       </div>
 
       <ul className="navbar-nav">
