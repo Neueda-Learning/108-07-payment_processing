@@ -1,19 +1,23 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
-import { paymentsApi } from '../services/api';
+import { accountsApi, paymentsApi } from '../services/api';
 
 const STATUSES = ['ALL', 'COMPLETED', 'FAILED'];
+const FLOWS = ['CREDITED', 'DEBITED'];
 
 export default function PaymentList() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
 
   const initialStatus = searchParams.get('status') || 'ALL';
+  const initialFlow = searchParams.get('flow') || '';
   const [activeStatus, setActiveStatus] = useState(
     STATUSES.includes(initialStatus) ? initialStatus : 'ALL'
   );
+  const [activeFlow, setActiveFlow] = useState(FLOWS.includes(initialFlow) ? initialFlow : '');
   const [searchTerm, setSearchTerm] = useState('');
   const [payments, setPayments] = useState([]);
+  const [myAccounts, setMyAccounts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -37,26 +41,64 @@ export default function PaymentList() {
     loadPayments(activeStatus);
   }, [activeStatus, loadPayments]);
 
+  useEffect(() => {
+    let cancelled = false;
+    accountsApi.getAll()
+      .then((response) => {
+        if (!cancelled) {
+          setMyAccounts((response.data || []).map((a) => a.accountNumber));
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setMyAccounts([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   function handleStatusFilter(status) {
     setActiveStatus(status);
-    setSearchTerm('');
-    if (status === 'ALL') {
-      setSearchParams({});
-    } else {
-      setSearchParams({ status });
-    }
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      if (status === 'ALL') next.delete('status');
+      else next.set('status', status);
+      return next;
+    });
   }
 
+  function handleFlowFilter(flow) {
+    const nextFlow = activeFlow === flow ? '' : flow;
+    setActiveFlow(nextFlow);
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      if (!nextFlow) next.delete('flow');
+      else next.set('flow', nextFlow);
+      return next;
+    });
+  }
+
+  const flowFiltered = useMemo(() => {
+    if (!activeFlow) return payments;
+    const accountSet = new Set(myAccounts);
+    if (activeFlow === 'CREDITED') {
+      return payments.filter((p) => p.destinationAccount && accountSet.has(p.destinationAccount));
+    }
+    return payments.filter((p) => p.sourceAccount && accountSet.has(p.sourceAccount));
+  }, [activeFlow, myAccounts, payments]);
+
   const filtered = searchTerm.trim()
-    ? payments.filter(
+    ? flowFiltered.filter(
         (p) => p.id?.toLowerCase().includes(searchTerm.trim().toLowerCase())
       )
-    : payments;
+    : flowFiltered;
 
   const hasSearch = searchTerm.trim().length > 0;
+  const statusLabel = activeStatus === 'ALL' ? 'all statuses' : activeStatus;
+  const flowLabel = !activeFlow ? 'all movements' : activeFlow.toLowerCase();
   const resultCountText = hasSearch
     ? `${filtered.length} payment${filtered.length !== 1 ? 's' : ''} found with ID: ${searchTerm.trim()}`
-    : `${payments.length} payment${payments.length !== 1 ? 's' : ''} found`;
+    : `${filtered.length} payment${filtered.length !== 1 ? 's' : ''} found (${statusLabel}, ${flowLabel})`;
 
   return (
     <div>
@@ -84,6 +126,16 @@ export default function PaymentList() {
             onClick={() => handleStatusFilter(s)}
           >
             {s}
+          </button>
+        ))}
+        {FLOWS.map((f) => (
+          <button
+            key={f}
+            className={`filter-btn ${activeFlow === f ? 'active' : ''}`}
+            onClick={() => handleFlowFilter(f)}
+            title={f === 'CREDITED' ? 'Money credited to your account(s)' : f === 'DEBITED' ? 'Money debited from your account(s)' : 'All account movements'}
+          >
+            {f}
           </button>
         ))}
         <input
