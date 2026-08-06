@@ -119,6 +119,10 @@ export default function CreatePayment() {
   }, []);
 
   const destinationOptions = destinationMatches.filter((a) => a.accountNumber !== form.sourceAccount);
+  const selectedSourceAccount = bankAccounts.find((a) => a.accountNumber === form.sourceAccount);
+  const sourceBalanceText = selectedSourceAccount
+    ? `${Number(selectedSourceAccount.balance || 0).toFixed(2)} ${selectedSourceAccount.currency}`
+    : '—';
 
   function handleDestinationNameChange(value) {
     setForm((prev) => ({
@@ -270,7 +274,7 @@ export default function CreatePayment() {
         {serverError && <div className="alert alert-error">{serverError}</div>}
 
         <form onSubmit={handleSubmit} noValidate>
-          {/* Source & Destination accounts */}
+          {/* Source account + available balance */}
           <div className="form-row">
             <div className="form-group">
               <label htmlFor="sourceAccount">Source Account *</label>
@@ -300,6 +304,21 @@ export default function CreatePayment() {
             </div>
 
             <div className="form-group">
+              <label htmlFor="sourceAvailableBalance">Available Balance</label>
+              <input
+                id="sourceAvailableBalance"
+                type="text"
+                className="form-control"
+                value={sourceBalanceText}
+                readOnly
+                disabled
+              />
+            </div>
+          </div>
+
+          {/* Destination account details */}
+          <div className="form-row">
+            <div className="form-group">
               <label htmlFor="destinationAccountName">Destination Account Name *</label>
               <input
                 id="destinationAccountName"
@@ -322,9 +341,7 @@ export default function CreatePayment() {
                 <div className="form-error">{fieldErrors.destinationAccountName}</div>
               )}
             </div>
-          </div>
 
-          <div className="form-row">
             <div className="form-group">
               <label htmlFor="destinationAccount">Destination Account Number *</label>
               <select
@@ -354,7 +371,6 @@ export default function CreatePayment() {
                 <div className="form-error">{fieldErrors.destinationAccount}</div>
               )}
             </div>
-            <div className="form-group" />
           </div>
 
           {/* Amount & Currency */}

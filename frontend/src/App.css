@@ -131,6 +131,9 @@ body {
   font-weight: 700;
   color: var(--primary);
   letter-spacing: -0.3px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .navbar-brand span {
@@ -885,6 +888,23 @@ tbody td.id-cell {
   justify-content: center;
   margin-bottom: 25px;
   font-size: 27px;
+}
+
+.brand-logo {
+  display: block;
+  object-fit: cover;
+}
+
+.brand-logo-login {
+  width: 44px;
+  height: 44px;
+  border-radius: 10px;
+}
+
+.brand-logo-nav {
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
 }
 
 .add-account-page.first-time {
