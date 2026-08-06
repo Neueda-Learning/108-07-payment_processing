@@ -45,7 +45,9 @@ export default function Login() {
     <div className="login-wrapper">
       <div className="login-card">
         <div className="login-header">
-          <div className="login-logo">💳</div>
+          <div className="login-logo">
+            <img src="/logo.jpg" alt="FlashPay logo" className="brand-logo brand-logo-login" />
+          </div>
           <h1>FlashPay</h1>
         </div>
         <p className="subtitle">Sign in to your account to continue</p>
