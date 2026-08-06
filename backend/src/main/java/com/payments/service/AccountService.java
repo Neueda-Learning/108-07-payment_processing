@@ -56,6 +56,7 @@ public class AccountService {
         account.setUsername(username);
         account.setCurrency(normaliseCurrency(request.currency()));
         account.setBalance(STARTING_BALANCE);
+        account.setBankAccountNumber(accountNumber);
         account.setAccountHolderName(request.accountHolderName().trim());
         account.setBankName(request.bankName().trim());
         account.setAccountType(parseAccountType(request.accountType()));
