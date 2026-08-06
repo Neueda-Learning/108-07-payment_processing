@@ -44,6 +44,7 @@ body {
 .main-content {
   margin-left: 240px;
   padding: 32px;
+  padding-top: 76px;
   min-height: 100vh;
 }
 
@@ -97,7 +98,7 @@ body {
 }
 
 @media (max-width: 768px) {
-  .main-content { margin-left: 0; padding: 16px; }
+  .main-content { margin-left: 0; padding: 16px; padding-top: 64px; }
 
   .profile-chip {
     top: 10px;

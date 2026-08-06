@@ -1,6 +1,7 @@
 import React, { useState, useCallback, useEffect } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
+import { AccountProvider, useAccountStatus } from './context/AccountContext';
 import { accountsApi } from './services/api';
 import Login from './components/Login';
 import Signup from './components/Signup';
@@ -46,8 +47,10 @@ function RequireBankAccount({ children }) {
   return status === 'has-account' ? children : <Navigate to="/add-bank-account" replace />;
 }
 
-function AppRoutes() {
+function AppShell() {
   const { token, username } = useAuth();
+  const location = useLocation();
+  const { hasAccount, setHasAccount, refreshAccountStatus } = useAccountStatus();
   const [sidebarWidth, setSidebarWidth] = useState(() =>
     parseInt(localStorage.getItem('pps_sidebar_width') || '360', 10)
   );
@@ -57,9 +60,22 @@ function AppRoutes() {
     localStorage.setItem('pps_sidebar_width', String(w));
   }, []);
 
+  useEffect(() => {
+    if (!token) {
+      setHasAccount(false);
+      return;
+    }
+    refreshAccountStatus();
+  }, [token, location.pathname, refreshAccountStatus, setHasAccount]);
+
   return (
-    <Router>
-      {token && <Navbar width={sidebarWidth} onWidthChange={handleWidthChange} />}
+    <>
+      {token && hasAccount && (
+        <Navbar
+          width={sidebarWidth}
+          onWidthChange={handleWidthChange}
+        />
+      )}
       {token && (
         <div className="profile-chip" aria-label="Current user profile">
           <button type="button" className="profile-chip-button" title={`User ID: ${username || 'Unknown User'}`}>
@@ -68,7 +84,7 @@ function AppRoutes() {
           <div className="profile-chip-tooltip">User ID: {username || 'Unknown User'}</div>
         </div>
       )}
-      <div className={token ? 'main-content' : ''} style={token ? { marginLeft: sidebarWidth } : {}}>
+      <div className={token ? 'main-content' : ''} style={token ? { marginLeft: hasAccount ? sidebarWidth : 0 } : {}}>
         <Routes>
           <Route
             path="/login"
@@ -139,6 +155,14 @@ function AppRoutes() {
           <Route path="*" element={<Navigate to={token ? '/dashboard' : '/signup'} replace />} />
         </Routes>
       </div>
+    </>
+  );
+}
+
+function AppRoutes() {
+  return (
+    <Router>
+      <AppShell />
     </Router>
   );
 }
@@ -146,7 +170,9 @@ function AppRoutes() {
 function App() {
   return (
     <AuthProvider>
-      <AppRoutes />
+      <AccountProvider>
+        <AppRoutes />
+      </AccountProvider>
     </AuthProvider>
   );
 }

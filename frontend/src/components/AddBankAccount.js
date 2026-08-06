@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { accountsApi } from '../services/api';
+import { useAccountStatus } from '../context/AccountContext';
 
 const ACCOUNT_TYPES = [
   { value: 'SAVINGS', label: 'Savings Account' },
@@ -20,6 +21,7 @@ const INITIAL_FORM = {
 
 export default function AddBankAccount() {
   const navigate = useNavigate();
+  const { refreshAccountStatus } = useAccountStatus();
   const [form, setForm] = useState({ ...INITIAL_FORM });
   const [fieldErrors, setFieldErrors] = useState({});
   const [accounts, setAccounts] = useState([]);
@@ -100,6 +102,7 @@ export default function AddBankAccount() {
       setForm({ ...INITIAL_FORM });
       setSuccessMessage('Bank account added successfully.');
       await loadAccounts();
+      refreshAccountStatus();
     } catch (err) {
       setServerError(err.message || 'Failed to add bank account. Please try again.');
     } finally {
